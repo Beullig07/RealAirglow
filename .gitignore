@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Third-party data fetched at run time (licences differ; see docs/PHYSICS.md §14)
+reference/data/cache/
+
+# Build output
+bin/
+obj/
+*.user
