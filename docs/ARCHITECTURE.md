@@ -49,19 +49,25 @@ tracking station use `Default-Tracking` (HDR, AutoExposure, Bloom).
 Decisions:
 
 1. **One camera per frame draws the airglow.**
-   - When the body's PQS is active and the map is closed, it is drawn on the earliest local
-     camera ("Camera 01" if present, else "Camera 00"), using its depth texture so terrain and
-     vessels occlude it.
-   - Otherwise it is drawn on the scaled-space camera (map, tracking station, far from the
-     body). Drawing on both would double the sky, because local cameras clear only depth.
-2. **Composite events.**
-   - Local camera: `AfterImageEffectsOpaque`, i.e. after Scatterer's local sky (so its
-     extinction is not applied on top of ours) and before the transparent pass (so EVE's 2D
-     clouds alpha-blend over the airglow).
-   - Scaled camera: `AfterForwardAlpha`, i.e. after Scatterer's scaled atmosphere and EVE's
-     scaled clouds. From orbit the airglow is in front of the clouds.
-   - Both events can be changed live in the debug window for in-game testing. Final ordering
-     with EVE volumetrics, Deferred and TUFX is Phase 4.
+   - In flight with the map closed, it is drawn on the earliest local camera ("Camera 01" if
+     present, else "Camera 00"), whatever the PQS state. That camera renders after the scaled
+     camera and also draws EVE's local cloud volumes (EVE switches to scaled layers above about
+     550 km in this install). Its depth texture lets terrain and vessels occlude the airglow;
+     the planet itself is intersected analytically.
+   - In map view and the Tracking Station it is drawn on the scaled-space camera. Drawing on
+     both would double the sky, because local cameras clear only depth.
+2. **Clouds: a front/back split.** The first in-game test (2026-10-11) showed dark night-side
+   clouds painted over the airglow from orbit, because the whole airglow was drawn before the
+   transparent pass. The shader now classifies each emission segment by whether the ray crossed
+   the lower-atmosphere shell (≤ 60 km, where all clouds are) before reaching it.
+   - Segments behind that shell are drawn before the clouds (`LocalEvent`, default
+     `AfterImageEffectsOpaque`, after Scatterer's local sky), so clouds can hide them. This is
+     the whole sky when looking up from the ground.
+   - Segments in front are drawn after the clouds (`FrontEvent`, default `AfterForwardAlpha`):
+     the layer seen from orbit, which really is in front of the clouds.
+   - The scaled camera uses one pass at `AfterForwardAlpha`.
+   - All three events can be changed live in the debug window. The harness checks that the two
+     parts add up to the whole (exact except for per-pass gamut mapping, ≤ 5 × 10⁻⁴).
 3. **Output encoding.** The shader applies the photographic exposure (ISS D4 frame,
    `PHYSICS.md` §12.3) and, in gamma colour space, the sRGB transfer curve, then adds with
    `Blend One One`.
@@ -71,9 +77,10 @@ Decisions:
    the CPU (`Vector3d`), from the local camera or from scaled space × `ScaledSpace.ScaleFactor`,
    then passed in km. The shader intersects spheres about the point of closest approach, which
    is stable at grazing incidence.
-5. **Day/night (temporary).** Phase 2 weights emission by the fraction of the solar disc hidden by
-   the planet at each sample point (solar angular radius from the IAU nominal radius and 1 au).
-   Phase 3 replaces this with the agreed adaptive exposure.
+5. **Day/night: metered exposure.** No cut on the emission. The exposure follows an averaging
+   meter over a 16 × 9 grid of view rays (`PHYSICS.md` §5), so airglow shows only in dark views.
+   The Phase 2 geometric night gate remains as a debug toggle, off by default. Its saved key
+   was renamed so an old `nightGate = True` is ignored.
 
 ## Shader vs reference (deliverable 5)
 

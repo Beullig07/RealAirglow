@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using RealAirglow.Core;
@@ -11,15 +12,23 @@ namespace RealAirglow
     ///
     /// Cameras (names as used by KSP and read by Scatterer's source): "Camera ScaledSpace";
     /// "Camera 00" (near) and, on OpenGL, "Camera 01" (far); D3D11 runs a single unified local
-    /// camera. When the body's PQS is active and the map is closed, the airglow is drawn once
-    /// on the earliest local camera so terrain and vessels occlude it through the depth buffer.
-    /// Otherwise it is drawn on the scaled-space camera. Drawing on both would double the sky.
+    /// camera. In flight with the map closed the airglow is drawn on the earliest local camera,
+    /// which renders after the scaled camera and also draws EVE's local cloud volumes; its depth
+    /// lets terrain and vessels occlude the airglow. In map view and the Tracking Station it is
+    /// drawn on the scaled-space camera. Only one camera draws per frame (local cameras clear
+    /// depth only, so drawing on both would double the sky).
+    ///
+    /// On the local camera the airglow is split in two (docs/ARCHITECTURE.md): emission that
+    /// reaches the camera without crossing the lower atmosphere is drawn after the clouds (it is
+    /// in front of them, e.g. seen from orbit); emission behind the lower atmosphere is drawn
+    /// before the clouds so they can hide it (e.g. seen from the ground).
     /// </summary>
     internal sealed class AirglowRenderer
     {
         private static Shader shader;
         private readonly RealAirglowAddon addon;
         private CameraHook scaledHook, localHook;
+        private float nextCameraScan;
 
         internal AirglowRenderer(RealAirglowAddon addon)
         {
@@ -38,16 +47,7 @@ namespace RealAirglow
             return s;
         }
 
-        internal bool LocalMode
-        {
-            get
-            {
-                var pqs = addon.Body.pqsController;
-                return HighLogic.LoadedSceneIsFlight && !MapView.MapIsEnabled && pqs != null && pqs.isActive;
-            }
-        }
-
-        private float nextCameraScan;
+        internal static bool LocalViewWanted => HighLogic.LoadedSceneIsFlight && !MapView.MapIsEnabled;
 
         internal void Update()
         {
@@ -63,7 +63,7 @@ namespace RealAirglow
                 scaledHook = Rehook(scaledHook, scaledCam, scaled: true);
                 localHook = Rehook(localHook, localCam, scaled: false);
             }
-            bool localMode = LocalMode && localHook != null;
+            bool localMode = LocalViewWanted && localHook != null;
             if (scaledHook != null) scaledHook.Active = !localMode;
             if (localHook != null) localHook.Active = localMode;
         }
@@ -71,22 +71,17 @@ namespace RealAirglow
         private CameraHook Rehook(CameraHook hook, Camera cam, bool scaled)
         {
             if (hook != null && hook.Camera == cam && cam != null) return hook;
-            if (hook != null) Object.Destroy(hook);
-            return Attach(cam, scaled);
-        }
-
-        private CameraHook Attach(Camera cam, bool scaled)
-        {
+            if (hook != null) UnityEngine.Object.Destroy(hook);
             if (cam == null) return null;
-            var hook = cam.gameObject.GetComponent<CameraHook>() ?? cam.gameObject.AddComponent<CameraHook>();
-            hook.Init(addon, cam, new Material(shader), scaled);
-            return hook;
+            var h = cam.gameObject.GetComponent<CameraHook>() ?? cam.gameObject.AddComponent<CameraHook>();
+            h.Init(addon, cam, new Material(shader), scaled);
+            return h;
         }
 
         internal void Dispose()
         {
-            if (scaledHook != null) Object.Destroy(scaledHook);
-            if (localHook != null) Object.Destroy(localHook);
+            if (scaledHook != null) UnityEngine.Object.Destroy(scaledHook);
+            if (localHook != null) UnityEngine.Object.Destroy(localHook);
         }
 
         /// <summary>Camera position relative to the body centre in km, and km per world unit.</summary>
@@ -114,7 +109,36 @@ namespace RealAirglow
         }
     }
 
-    /// <summary>Per-camera command buffer that draws the full-screen airglow pass.</summary>
+    /// <summary>Metered exposure state, smoothed so the display does not flicker as the view
+    /// turns (time constant: a display tuning parameter, not physics).</summary>
+    internal sealed class ExposureMeter
+    {
+        private const double TimeConstant = 0.5;   // s
+        private double logLum = double.NaN;
+        internal double AverageLuminance => double.IsNaN(logLum) ? 0.0 : Math.Exp(logLum);
+
+        /// <summary>Average scene luminance over a 16 x 9 grid of the camera's view rays.</summary>
+        internal void Measure(Double3 camKm, Vector3[] frustum, double radiusKm, Vector3 sunDir, double atmosphereTopKm, double dt)
+        {
+            const int nx = 16, ny = 9;
+            var cam = new Vec3(camKm.x, camKm.y, camKm.z);
+            var sun = new Vec3(sunDir.x, sunDir.y, sunDir.z);
+            double sum = 0;
+            for (int j = 0; j < ny; j++)
+                for (int i = 0; i < nx; i++)
+                {
+                    float u = (i + 0.5f) / nx, v = (j + 0.5f) / ny;
+                    var r = Vector3.Lerp(Vector3.Lerp(frustum[0], frustum[3], u), Vector3.Lerp(frustum[1], frustum[2], u), v).normalized;
+                    sum += AutoExposure.RayLuminance(cam, new Vec3(r.x, r.y, r.z), radiusKm, sun, atmosphereTopKm);
+                }
+            // Log of the average, floored far below any metered level so log() stays finite.
+            double l = Math.Log(Math.Max(sum / (nx * ny), 1e-9));
+            if (double.IsNaN(logLum)) logLum = l;
+            else logLum += (l - logLum) * (1 - Math.Exp(-dt / TimeConstant));
+        }
+    }
+
+    /// <summary>Per-camera command buffers that draw the full-screen airglow pass(es).</summary>
     internal sealed class CameraHook : MonoBehaviour
     {
         internal Camera Camera { get; private set; }
@@ -123,10 +147,11 @@ namespace RealAirglow
         private RealAirglowAddon addon;
         private Material material;
         private bool scaled;
-        private CommandBuffer buffer;
-        private CameraEvent registeredEvent;
-        private bool registered;
         private Mesh quad;
+        private CommandBuffer mainBuffer, frontBuffer;
+        private CameraEvent mainEvent, frontEvent;
+        private bool mainRegistered, frontRegistered;
+        private MaterialPropertyBlock allPass, backPass, frontPass;
 
         internal void Init(RealAirglowAddon owner, Camera cam, Material mat, bool isScaled)
         {
@@ -134,46 +159,75 @@ namespace RealAirglow
             if (material != null) Destroy(material);
             material = mat;
             if (quad == null) quad = AirglowMaterialBinder.FullScreenQuad();
-            if (buffer == null) buffer = new CommandBuffer { name = "RealAirglow" };
+            if (mainBuffer == null) mainBuffer = new CommandBuffer { name = "RealAirglow" };
+            if (frontBuffer == null) frontBuffer = new CommandBuffer { name = "RealAirglow (in front of clouds)" };
+            allPass = Pass(0f); backPass = Pass(2f); frontPass = Pass(1f);
         }
 
-        private CameraEvent WantedEvent => scaled ? addon.Options.ScaledEvent : addon.Options.LocalEvent;
+        private static MaterialPropertyBlock Pass(float mode)
+        {
+            var b = new MaterialPropertyBlock();
+            b.SetFloat("_PassMode", mode);
+            return b;
+        }
+
+        private void Register(CommandBuffer buffer, ref bool registered, ref CameraEvent current, CameraEvent wanted, bool want)
+        {
+            if (registered && (!want || current != wanted)) { Camera.RemoveCommandBuffer(current, buffer); registered = false; }
+            if (want && !registered) { current = wanted; Camera.AddCommandBuffer(current, buffer); registered = true; }
+        }
 
         private void OnPreRender()
         {
             if (addon == null || Camera == null) return;
-            if (!registered || registeredEvent != WantedEvent)
-            {
-                if (registered) Camera.RemoveCommandBuffer(registeredEvent, buffer);
-                registeredEvent = WantedEvent;
-                Camera.AddCommandBuffer(registeredEvent, buffer);
-                registered = true;
-            }
-            buffer.Clear();
+            var o = addon.Options;
+            Register(mainBuffer, ref mainRegistered, ref mainEvent, scaled ? o.ScaledEvent : o.LocalEvent, true);
+            Register(frontBuffer, ref frontRegistered, ref frontEvent, o.FrontEvent, !scaled);
+            mainBuffer.Clear();
+            frontBuffer.Clear();
             if (!Active || !addon.Controls.Enabled) return;
 
             Camera.depthTextureMode |= DepthTextureMode.Depth;
-            var o = addon.Options;
-            AirglowMaterialBinder.BindModel(material, addon.Model, addon.Controls.Effective, o.F107, o.Mode,
-                o.Extinction, o.NightGate, CameraExposure.IssD4.Scale,
-                QualitySettings.activeColorSpace == ColorSpace.Gamma);
             AirglowRenderer.ViewOrigin(addon.Body, Camera, scaled, out var posKm, out var unitKm);
+            var frustum = AirglowMaterialBinder.FrustumRays(Camera);
+            var sunDir = AirglowRenderer.SunDirection(addon.Body);
+            double radiusKm = addon.Body.Radius / 1000.0;
+
+            addon.Meter.Measure(posKm, frustum, radiusKm, sunDir, addon.Model.Lower.TopKm, Time.unscaledDeltaTime);
+            double exposure = o.Exposure == ExposureMode.Auto
+                ? AutoExposure.Scale(addon.Meter.AverageLuminance, CameraExposure.IssD4)
+                : CameraExposure.IssD4.Scale;
+            addon.CurrentExposure = exposure;
+
+            AirglowMaterialBinder.BindModel(material, addon.Model, addon.Controls.Effective, o.F107, o.Mode,
+                o.Extinction, o.NightGate, exposure, QualitySettings.activeColorSpace == ColorSpace.Gamma);
             var view = new AirglowView
             {
                 CamPosKm = posKm,
                 CamForward = Camera.transform.forward,
-                FrustumRays = AirglowMaterialBinder.FrustumRays(Camera),
+                FrustumRays = frustum,
                 WorldUnitKm = unitKm,
-                SunDir = AirglowRenderer.SunDirection(addon.Body),
+                SunDir = sunDir,
             };
-            AirglowMaterialBinder.BindView(material, view, addon.Body.Radius / 1000.0, useDepth: true);
-            buffer.DrawMesh(quad, Matrix4x4.identity, material, 0, 0);
+            AirglowMaterialBinder.BindView(material, view, radiusKm, useDepth: true);
+            if (scaled)
+                mainBuffer.DrawMesh(quad, Matrix4x4.identity, material, 0, 0, allPass);
+            else
+            {
+                mainBuffer.DrawMesh(quad, Matrix4x4.identity, material, 0, 0, backPass);
+                frontBuffer.DrawMesh(quad, Matrix4x4.identity, material, 0, 0, frontPass);
+            }
         }
 
         private void OnDestroy()
         {
-            if (registered && Camera != null) Camera.RemoveCommandBuffer(registeredEvent, buffer);
-            buffer?.Release();
+            if (Camera != null)
+            {
+                if (mainRegistered) Camera.RemoveCommandBuffer(mainEvent, mainBuffer);
+                if (frontRegistered) Camera.RemoveCommandBuffer(frontEvent, frontBuffer);
+            }
+            mainBuffer?.Release();
+            frontBuffer?.Release();
             if (material != null) Destroy(material);
             if (quad != null) Destroy(quad);
         }

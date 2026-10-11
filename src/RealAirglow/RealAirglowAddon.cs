@@ -19,6 +19,8 @@ namespace RealAirglow
         internal RuntimeOptions Options { get; private set; }
         internal BodyAirglow Model { get; private set; }
         internal CelestialBody Body { get; private set; }
+        internal ExposureMeter Meter { get; } = new ExposureMeter();
+        internal double CurrentExposure;
 
         private AirglowRenderer airglowRenderer;
         private SettingsWindow window;

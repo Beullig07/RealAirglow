@@ -65,6 +65,10 @@ Shader "RealAirglow/Airglow"
             float4 _Aerosol;            // x tau(550 nm), y scale height km
             float _Exposure;            // display scale: luminance (cd m^-2) -> fraction of saturation
             float _GammaSpace;          // 1: encode with the sRGB curve (gamma colour space)
+            // 0: all emission. 1: only emission reaching the camera without crossing the lower
+            // atmosphere (drawn after clouds, so it lies in front of them). 2: only emission
+            // behind the lower atmosphere (drawn before clouds, so clouds can hide it).
+            float _PassMode;
 
             struct appdata { float4 vertex : POSITION; };
             struct v2f
@@ -187,10 +191,9 @@ Shader "RealAirglow/Airglow"
 
                 // Slant absorber columns over the lower-atmosphere shell.
                 float2 a0, a1;
-                int nAbs = 0;
                 float3 absC0 = 0, absC1 = 0;   // (air m^-2, ozone m^-2, aerosol tau)
+                int nAbs = Band(o, d, _RadiusKm - 1e-3, _RadiusKm + _AirPoly1.z, tEnd, a0, a1);
             #if defined(EXTINCTION_ON)
-                nAbs = Band(o, d, _RadiusKm - 1e-3, _RadiusKm + _AirPoly1.z, tEnd, a0, a1);
                 [unroll] for (int j = 0; j < 2; j++)
                 {
                     if (j < nAbs)
@@ -236,10 +239,14 @@ Shader "RealAirglow/Airglow"
                             col += w;
                         }
                         col *= half_ * shape.w;   // rayleighs (scale includes the display multiplier)
+                        bool behind0 = nAbs > 0 && a0.y <= iv.x + 1e-3;
+                        bool behind1 = nAbs > 1 && a1.y <= iv.x + 1e-3;
+                        bool behind = behind0 || behind1;
+                        if (_PassMode > 0.5 && (behind ? _PassMode < 1.5 : _PassMode > 1.5)) col = 0;
                         float3 c = 0;   // absorber columns between the camera and this interval
                     #if defined(EXTINCTION_ON)
-                        if (nAbs > 0 && a0.y <= iv.x + 1e-3) c += absC0;
-                        if (nAbs > 1 && a1.y <= iv.x + 1e-3) c += absC1;
+                        if (behind0) c += absC0;
+                        if (behind1) c += absC1;
                     #endif
                         if (c.x <= 0)
                             sum += col * _LayerColour[l];

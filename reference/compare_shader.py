@@ -54,10 +54,14 @@ def main():
         rel = np.abs(Ys[m] / Yr[m] - 1)
         rgb_rel = np.abs(shader[m] - ref[m]).max(axis=-1) / Yr[m]
         med, p95, mx = np.median(rel), np.percentile(rel, 95), rel.max()
-        passed = med <= TOL_MEDIAN and p95 <= TOL_P95
+        split = meta.get("split_error", float("nan"))
+        # Each pass is gamut-mapped on its own (a nonlinear step), so front + back differs from
+        # the single pass by a tiny amount where a pixel gets both and has negative channels.
+        passed = med <= TOL_MEDIAN and p95 <= TOL_P95 and split <= 1e-3
         ok &= passed
         print(f"{meta_path.stem:16s} pixels {m.sum():6d}  luminance rel. error median {med:.2%}  p95 {p95:.2%}  "
               f"max {mx:.2%}  |  colour error (max channel / Y) p95 {np.percentile(rgb_rel, 95):.2%}  "
+              f"front+back split error {split:.1e}  "
               f"{'PASS' if passed else 'FAIL'}")
         np.save(HARNESS / f"{meta_path.stem}_reference.npy", ref)
     print("overall:", "PASS" if ok else "FAIL", f"(tolerance: median <= {TOL_MEDIAN:.0%}, p95 <= {TOL_P95:.0%})")

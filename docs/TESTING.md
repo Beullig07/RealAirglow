@@ -1,5 +1,22 @@
 # In-game test checklist
 
+## Retest after the 2026-10-11 fixes (clouds, terminator)
+
+1. **Clouds from orbit** (night side, ~400–500 km, same view as before): cloud tops should no
+   longer show as black patches through the airglow; the glow should lie evenly over them.
+   - If they are still black, open Debug… and press "Next front event" until they look right.
+   - Note the event name and send it.
+2. **Clouds from the ground** (night, under clouds): clouds should still hide the airglow.
+   - If the glow is drawn over them, press "Next local event" instead and note which one works.
+3. **Terminator** (map view, the same half-lit Earth as before): the hard edge is gone.
+   - With sunlit Earth in frame, the airglow should fade out completely: the camera exposes for
+     daylight. It appears when you look at the night side only.
+   - Debug… shows the metered luminance and the exposure as a % of the ISS night exposure.
+   - "Fixed (ISS night)" brings back a constant night exposure for comparison. In Fixed mode the
+     airglow also covers the day side, which is expected because it is not physical.
+4. Old saved settings: `nightGate` from the previous build is ignored. The night gate is now a
+   debug toggle that is off by default.
+
 ## Phase 2: static layers, intensity window
 
 Before you start:
@@ -38,9 +55,8 @@ vessel. Screenshots: F1. Send them with the debug window open where it says so.
 3. Look down at the night side: a faint olive glow over the planet, brighter toward the limb.
 4. Open map view (M): the same bands appear around Earth in map view, with no doubling or jump
    when switching back and forth.
-5. Cross the terminator toward day: the airglow fades out across the terminator (temporary
-   night gate). Then Debug… → turn the night gate off: the bands appear on the day side too.
-   That is expected for now; Phase 3 replaces the gate with adaptive exposure.
+5. Cross the terminator toward day: as sunlit ground comes into view the airglow fades with the
+   metered exposure (no hard edge).
 
 ### C. Ground view (night, clear sky)
 1. Faint olive/greenish sky glow, brighter toward the horizon (strongest ~10–15° above it),

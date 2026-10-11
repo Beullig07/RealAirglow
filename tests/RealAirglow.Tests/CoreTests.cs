@@ -203,4 +203,53 @@ namespace RealAirglow.Tests
             Assert.Equal(70.7, CameraExposure.IssD4.Scale, 1);
         }
     }
+
+    public class AutoExposureTests
+    {
+        private const double R = 6371.0;
+        private static readonly Vec3 Sun = new Vec3(1, 0, 0);
+
+        [Fact]
+        public void DarkSceneGivesTheIssNightExposure()
+        {
+            Assert.Equal(CameraExposure.IssD4.Scale, AutoExposure.Scale(0.0, CameraExposure.IssD4), 9);
+            Assert.Equal(0.0014724, AutoExposure.MeteredLuminance(CameraExposure.IssD4), 6);
+        }
+
+        [Fact]
+        public void BrighterSceneScalesExposureDownInProportion()
+        {
+            double night = AutoExposure.Scale(0, CameraExposure.IssD4);
+            double moonlit = AutoExposure.Scale(10 * AutoExposure.MeteredLuminance(CameraExposure.IssD4), CameraExposure.IssD4);
+            Assert.Equal(night / 10, moonlit, 6);
+        }
+
+        [Fact]
+        public void TwilightCurveMatchesPatat2006()
+        {
+            Assert.Equal(1.98, AutoExposure.TwilightSkyLuminance(95), 2);
+            Assert.Equal(6.78e-3, AutoExposure.TwilightSkyLuminance(100), 4);
+            Assert.Equal(3.20e-4, AutoExposure.TwilightSkyLuminance(110), 5);  // held at the 105 deg value
+        }
+
+        [Fact]
+        public void SunlitDiscSeenFromOrbitIsBrightNightSideIsDark()
+        {
+            var cam = new Vec3(R + 420, 0, 0);
+            var down = new Vec3(-1, 0, 0);
+            Assert.True(AutoExposure.RayLuminance(cam, down, R, Sun, 60) > 1e4);          // sub-solar point
+            Assert.Equal(0.0, AutoExposure.RayLuminance(cam, down, R, new Vec3(-1, 0, 0), 60));
+            Assert.Equal(0.0, AutoExposure.RayLuminance(cam, new Vec3(0, 1, 0), R, Sun, 60)); // space
+        }
+
+        [Fact]
+        public void GroundSkyFollowsTwilight()
+        {
+            var cam = new Vec3(R + 0.001, 0, 0);
+            var up = new Vec3(1, 0, 0);
+            double z = 100 * Math.PI / 180;
+            var sun100 = new Vec3(Math.Cos(z), Math.Sin(z), 0);
+            Assert.Equal(AutoExposure.TwilightSkyLuminance(100), AutoExposure.RayLuminance(cam, up, R, sun100, 60), 9);
+        }
+    }
 }

@@ -6,6 +6,9 @@ using UnityEngine.Rendering;
 
 namespace RealAirglow
 {
+    /// <summary>Auto: metered exposure (AutoExposure). Fixed: always the ISS night exposure.</summary>
+    public enum ExposureMode { Auto = 0, Fixed = 1 }
+
     /// <summary>Options shown in the debug window, persisted alongside the display controls.</summary>
     public sealed class RuntimeOptions
     {
@@ -13,10 +16,13 @@ namespace RealAirglow
         public SpectralMode Mode = SpectralMode.Camera;
         public double F107 = 100.0;              // sfu, PALACE reference (owner confirmed)
         public bool Extinction = true;
-        // Temporary Phase 2 day/night handling: emission weighted by the fraction of the solar
-        // disc hidden by the planet at the emitting point. Replaced by adaptive exposure in Phase 3.
-        public bool NightGate = true;
-        public CameraEvent LocalEvent = CameraEvent.AfterImageEffectsOpaque;
+        public ExposureMode Exposure = ExposureMode.Auto;
+        // Debug only: weight emission by the fraction of the solar disc hidden by the planet at
+        // the emitting point. Not physical (nightglow does not stop at the terminator); off by
+        // default since the metered exposure handles daylight.
+        public bool NightGate = false;
+        public CameraEvent LocalEvent = CameraEvent.AfterImageEffectsOpaque;   // behind-atmosphere part, before clouds
+        public CameraEvent FrontEvent = CameraEvent.AfterForwardAlpha;         // in-front part, after clouds
         public CameraEvent ScaledEvent = CameraEvent.AfterForwardAlpha;
         public string HotkeyKey = "G";           // with Alt
 
@@ -26,7 +32,9 @@ namespace RealAirglow
             d["spectralMode"] = Mode.ToString();
             d["f107"] = F107.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
             d["extinction"] = Extinction.ToString();
-            d["nightGate"] = NightGate.ToString();
+            d["exposure"] = Exposure.ToString();
+            d["nightGateDebug"] = NightGate.ToString();
+            d["frontEvent"] = FrontEvent.ToString();
             d["localEvent"] = LocalEvent.ToString();
             d["scaledEvent"] = ScaledEvent.ToString();
             d["hotkey"] = HotkeyKey;
@@ -39,7 +47,10 @@ namespace RealAirglow
             if (d.TryGetValue("f107", out var f) && double.TryParse(f, System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out var fv)) F107 = fv;
             if (d.TryGetValue("extinction", out var e) && bool.TryParse(e, out var ev)) Extinction = ev;
-            if (d.TryGetValue("nightGate", out var n) && bool.TryParse(n, out var nv)) NightGate = nv;
+            if (d.TryGetValue("exposure", out var x) && Enum.TryParse(x, out ExposureMode xm)) Exposure = xm;
+            // "nightGateDebug" replaces the Phase 2 key "nightGate" so an old saved True is ignored.
+            if (d.TryGetValue("nightGateDebug", out var n) && bool.TryParse(n, out var nv)) NightGate = nv;
+            if (d.TryGetValue("frontEvent", out var fe) && Enum.TryParse(fe, out CameraEvent fev)) FrontEvent = fev;
             if (d.TryGetValue("localEvent", out var le) && Enum.TryParse(le, out CameraEvent lev)) LocalEvent = lev;
             if (d.TryGetValue("scaledEvent", out var se) && Enum.TryParse(se, out CameraEvent sev)) ScaledEvent = sev;
             if (d.TryGetValue("hotkey", out var h) && h.Length > 0) HotkeyKey = h;

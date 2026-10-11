@@ -22,6 +22,7 @@ namespace RealAirglow
         {
             CameraEvent.AfterForwardOpaque, CameraEvent.BeforeImageEffectsOpaque, CameraEvent.AfterImageEffectsOpaque,
             CameraEvent.BeforeForwardAlpha, CameraEvent.AfterForwardAlpha, CameraEvent.BeforeImageEffects,
+            CameraEvent.AfterImageEffects, CameraEvent.AfterEverything,
         };
 
         private RealAirglowAddon addon;
@@ -151,7 +152,14 @@ namespace RealAirglow
 
             bool ext = GUILayout.Toggle(o.Extinction, " Lower-atmosphere extinction");
             if (ext != o.Extinction) { o.Extinction = ext; MarkDirty(); }
-            bool gate = GUILayout.Toggle(o.NightGate, " Night gate (temporary, until Phase 3)");
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Exposure", GUILayout.Width(70));
+            foreach (ExposureMode m in Enum.GetValues(typeof(ExposureMode)))
+                if (GUILayout.Toggle(o.Exposure == m, m == ExposureMode.Auto ? "Auto (metered)" : "Fixed (ISS night)", "Button") && o.Exposure != m)
+                { o.Exposure = m; MarkDirty(); }
+            GUILayout.EndHorizontal();
+            GUILayout.Label($"Metered scene luminance {addon.Meter.AverageLuminance:G3} cd/m², exposure {addon.CurrentExposure / CameraExposure.IssD4.Scale * 100:G3} % of ISS night");
+            bool gate = GUILayout.Toggle(o.NightGate, " Night gate (debug, not physical)");
             if (gate != o.NightGate) { o.NightGate = gate; MarkDirty(); }
 
             GUILayout.BeginHorizontal();
@@ -165,8 +173,10 @@ namespace RealAirglow
             if (o.F107 < 65 || o.F107 > 230) GUILayout.Label("outside data range 65-230");
             GUILayout.EndHorizontal();
 
-            GUILayout.Label("Composite event (local camera): " + o.LocalEvent);
+            GUILayout.Label("Local camera, behind-atmosphere part (before clouds): " + o.LocalEvent);
             if (GUILayout.Button("Next local event")) { o.LocalEvent = Next(o.LocalEvent); MarkDirty(); }
+            GUILayout.Label("Local camera, in-front part (after clouds): " + o.FrontEvent);
+            if (GUILayout.Button("Next front event")) { o.FrontEvent = Next(o.FrontEvent); MarkDirty(); }
             GUILayout.Label("Composite event (scaled camera): " + o.ScaledEvent);
             if (GUILayout.Button("Next scaled event")) { o.ScaledEvent = Next(o.ScaledEvent); MarkDirty(); }
 
@@ -186,8 +196,7 @@ namespace RealAirglow
         /// the shader): apparent column per group in rayleighs and the resulting luminance.</summary>
         private void DrawReadout()
         {
-            var cam = Camera.allCameras.FirstOrDefault(x => x.name == (MapView.MapIsEnabled || HighLogic.LoadedScene == GameScenes.TRACKSTATION
-                ? "Camera ScaledSpace" : "Camera 00"));
+            var cam = Camera.allCameras.FirstOrDefault(x => x.name == (AirglowRenderer.LocalViewWanted ? "Camera 00" : "Camera ScaledSpace"));
             if (cam == null) { GUILayout.Label("no camera"); return; }
             bool scaled = cam.name == "Camera ScaledSpace";
             AirglowRenderer.ViewOrigin(addon.Body, cam, scaled, out var p, out _);
@@ -211,7 +220,7 @@ namespace RealAirglow
                 lum += y;
                 GUILayout.Label($"  {g,-9} {col,12:G4} R   {y:G3} cd/m²");
             }
-            GUILayout.Label($"  total luminance {lum:G3} cd/m² → {lum * CameraExposure.IssD4.Scale:G3} of saturation at 100 %");
+            GUILayout.Label($"  total luminance {lum:G3} cd/m² → {lum * addon.CurrentExposure:G3} of saturation at 100 % master");
         }
 
         private void OnDestroy()

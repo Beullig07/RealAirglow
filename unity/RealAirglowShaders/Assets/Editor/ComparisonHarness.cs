@@ -81,14 +81,30 @@ namespace RealAirglow.Editor
                 var cb = new CommandBuffer { name = "RealAirglow harness" };
                 cb.DrawMesh(quad, Matrix4x4.identity, material, 0, 0);
                 cam.AddCommandBuffer(CameraEvent.AfterEverything, cb);
-                cam.Render();
-
-                RenderTexture.active = rt;
-                var tex = new Texture2D(v.Width, v.Height, TextureFormat.RGBAFloat, false, true);
-                tex.ReadPixels(new Rect(0, 0, v.Width, v.Height), 0, 0);
-                tex.Apply();
-                RenderTexture.active = null;
-                var px = tex.GetRawTextureData<float>().ToArray();   // row 0 = bottom
+                float[] RenderPass(float passMode)
+                {
+                    material.SetFloat("_PassMode", passMode);
+                    cam.Render();
+                    RenderTexture.active = rt;
+                    var t = new Texture2D(v.Width, v.Height, TextureFormat.RGBAFloat, false, true);
+                    t.ReadPixels(new Rect(0, 0, v.Width, v.Height), 0, 0);
+                    t.Apply();
+                    RenderTexture.active = null;
+                    var data = t.GetRawTextureData<float>().ToArray();   // row 0 = bottom
+                    UnityEngine.Object.DestroyImmediate(t);
+                    return data;
+                }
+                var front = RenderPass(1f);
+                var back = RenderPass(2f);
+                var px = RenderPass(0f);
+                // The in-front and behind-atmosphere passes must add up to the full airglow.
+                double maxPx = 0, maxDiff = 0;
+                for (int k = 0; k < px.Length; k++)
+                {
+                    maxPx = Math.Max(maxPx, Math.Abs(px[k]));
+                    maxDiff = Math.Max(maxDiff, Math.Abs(front[k] + back[k] - px[k]));
+                }
+                double splitError = maxPx > 0 ? maxDiff / maxPx : 0;
                 var bytes = new byte[px.Length * 4];
                 Buffer.BlockCopy(px, 0, bytes, 0, bytes.Length);
                 File.WriteAllBytes(Path.Combine(outDir, v.Name + ".f32"), bytes);
@@ -99,7 +115,9 @@ namespace RealAirglow.Editor
                     v.Width, v.Height, RadiusKm, v.AltKm, v.Extinction ? "true" : "false");
                 sb.Append("  \"frustum_rays\": [");
                 sb.Append(string.Join(", ", view.FrustumRays.Select(r => string.Format(CultureInfo.InvariantCulture, "[{0:R}, {1:R}, {2:R}]", r.x, r.y, r.z))));
-                sb.Append("],\n  \"rows\": \"bottom_to_top\", \"channels\": \"RGBA float32\"\n}\n");
+                sb.Append("],\n");
+                sb.AppendFormat(CultureInfo.InvariantCulture, "  \"split_error\": {0:R},\n", splitError);
+                sb.Append("  \"rows\": \"bottom_to_top\", \"channels\": \"RGBA float32\"\n}\n");
                 File.WriteAllText(Path.Combine(outDir, v.Name + ".json"), sb.ToString());
 
                 cam.RemoveCommandBuffer(CameraEvent.AfterEverything, cb);

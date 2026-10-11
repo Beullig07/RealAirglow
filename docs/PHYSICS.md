@@ -286,7 +286,7 @@ Checks and choices:
 | Item | Value / approach | Conf. | Source |
 |---|---|---|---|
 | Full night | Ground solar zenith angle ≥ 100° means night up to ~200 km altitude | V | [Noll2025] §6.1 |
-| Gate | Evaluate solar illumination at the emitting point, using the Earth's shadow height. Do not use the observer's ground SZA. | D | geometry |
+| Gate | No gate on the emission: nightglow chemistry does not stop at the terminator. A geometric "night gate" (fraction of the solar disc hidden by the planet at the emitting point) exists only as a debug option, off by default. In Phase 2 it was on and produced a hard edge at the terminator, which is not physical (owner screenshot, 2026-10-11). | D | |
 | Dayglow | Exists and is often brighter than nightglow (557.7 nm dayglow has E-region ~105 km and F-region ~155 km peaks). The O(¹S) dayglow is driven directly by solar EUV. | S | WINDII, Zhang & Shepherd 2005 (S) |
 | Dayglow intensities | **Open**: not yet sourced. Candidates: Zhang & Shepherd 2005 (557.7 nm), WINDII 630 nm model (JGR 2021, e2020JA028715). | Open | |
 | Na twilight resonance | §4.2 | Open (g) | |
@@ -295,9 +295,35 @@ Checks and choices:
 daylight the airglow is present but invisible because a camera or eye adapted to daylight is
 about 10⁵–10⁶× less sensitive. The display exposure applied to airglow follows an adaptation
 model: exposure ∝ 1 / L_adapt, with L_adapt estimated from the scene (sun elevation at the
-camera, sunlit fraction of view). Night presets then cannot make dayside airglow glow. The
-adaptation model and its constants are designed in Phase 3 and documented here. It does not
-affect the physical radiance.
+camera, sunlit fraction of view). Night presets then cannot make dayside airglow glow. It does
+not affect the physical radiance.
+
+**Metered exposure (implemented 2026-10-11, `src/Core/AutoExposure.cs`).** The display exposure
+is what an averaging reflected-light meter would choose for the scene:
+
+- **Metering.** N²/(t S) = L_avg / K with K = 12.5 cd s m⁻² (ISO 2720 calibration constant,
+  S). With the ISO 12232 relations of §12.3 the display scale becomes q K / (78 L_avg).
+- **Night cap.** The scale never exceeds the ISS night preset: L_avg is floored at
+  K N²/(t S) = 1.47 × 10⁻³ cd m⁻² for 1.3 s, f/1.4, ISO 12800. That is the most exposure a
+  documented ISS night photograph used.
+- **Scene luminance.** L_avg is the mean over a 16 × 9 grid of the camera's view rays:
+  - **Ray hits the planet:** Lambertian surface, L = A E_v max(μ☉, 0)/π, with A = 0.29
+    (Earth's albedo, ERBE/CERES, [Stephens2015]) and E_v = 134 634 lx (TSIS-1 HSRS spectrum ×
+    CIE V(λ) × 683 lm W⁻¹, D).
+  - **Ray misses, camera inside the atmosphere (< 60 km):** V-band twilight sky
+    m = 11.84 + 1.518 (ζ−95) − 0.057 (ζ−95)² mag arcsec⁻² for Sun zenith distance ζ in 95–105°
+    ([Patat2006] Table 1, Paranal), held at the end values outside that range. Converted with
+    L = 1.08 × 10⁵ × 10^(−0.4 m) cd m⁻² ([Bara2020]; their zero point spans 1.11–1.43 × 10⁵).
+    In daylight (ζ < 95°) the larger of this and the sunlit-surface value is used.
+  - **Space:** 0.
+  - **Not included:** Moon, stars, city lights.
+- **Consequences.**
+  - Seen from the ground, the airglow reaches full night exposure when the Sun is about 102°
+    from the zenith (1.46 × 10⁻³ cd m⁻²), i.e. near the end of nautical twilight.
+  - Any sunlit ground in frame drops the exposure by orders of magnitude, so airglow is visible
+    only when the view is dark.
+  - The meter is smoothed with a 0.5 s time constant (display tuning, not physics).
+- **"Fixed" mode** (debug window) keeps the ISS night exposure regardless of the scene.
 
 ## 6. Local time and inter-layer lags
 
@@ -504,6 +530,8 @@ attribution; the NC/SA camera data is acceptable for this free mod.
 
 ## Bibliography
 
+- **[Bara2020]** Bará, S., Aubé, M., Barentine, J., Zamorano, J. (2020). Magnitude to luminance
+  conversions and visual brightness of the night sky. *MNRAS* 493, 2429. arXiv:2002.01494 (S).
 - **[Baker1976]** Baker, D. J., Romick, G. J. (1976). The rayleigh: interpretation of the unit in
   terms of column emission rate or apparent radiance expressed in SI units. *Appl. Opt.* 15(8),
   1966–1968.
@@ -577,6 +605,8 @@ attribution; the NC/SA camera data is acceptable for this free mod.
 - **[Parihar2013]** Parihar, N., Taori, A., Gurubaran, S., Mukherjee, G. K. (2013). Simultaneous
   measurement of OI 557.7 nm, O₂(0,1) Atmospheric Band and OH(6,2) Meinel Band nightglow at
   Kolhapur (17°N), India. *Ann. Geophys.* 31, 197–208.
+- **[Patat2006]** Patat, F., Ugolnikov, O. S., Postylyakov, O. V. (2006). UBVRI twilight sky
+  brightness at ESO-Paranal. *A&A* 455, 385–393. arXiv:astro-ph/0604128 (Table 1 and Sect. 4 read).
 - **[Patat2008]** Patat, F. (2008). The dancing sky: 6 years of night-sky observations at Cerro
   Paranal. *A&A* 481, 575–591. arXiv:0801.2270.
 - **[Paulino-CISBGf]** OI 557.7 nm F-region nightglow intensity at 7.4°S, 8th CISBGf expanded
@@ -585,6 +615,8 @@ attribution; the NC/SA camera data is acceptable for this free mod.
 - **[Serdyuchenko2014]** Serdyuchenko, A., Gorshelev, V., Weber, M., Chehade, W., Burrows,
   J. P. (2014). High spectral resolution ozone absorption cross-sections – Part 2:
   Temperature dependence. *AMT* 7, 625–636. Data: IUP Bremen (version 2012).
+- **[Stephens2015]** Stephens, G. L., et al. (2015). The albedo of Earth. *Rev. Geophys.* 53,
+  141–163. "About 29% (or 0.29)"; ERBE/CERES 1984–present: 0.29 (Table 1; read).
 - **[Sun2016]** Sun, L., et al. (2016). A statistical analysis of equatorial plasma bubble
   structures based on an all-sky airglow imager network in China. *JGR Space Phys.* (S).
 - **[TSIS-HSRS]** Coddington, O. M., et al. (2021). The TSIS-1 Hybrid Solar Reference Spectrum.
