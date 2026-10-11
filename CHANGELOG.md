@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 (2026-10-11)
+
+### Changed
+- The red line defaults to 500 % of the master (was 6667 %). At the 1.5 % default master
+  its final brightness is 7.5 %.
+- A red value saved by 1.0.0 or 1.0.1 is replaced by the new default; other settings are
+  kept.
+
 ## 1.0.1 (2026-10-11)
 
 ### Changed

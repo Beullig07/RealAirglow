@@ -503,8 +503,8 @@ Multiple scattering and ground albedo would add more and are not estimated yet.
 - The ground all-sky render uses an illustrative 20 s, f/2.8, ISO 6400 exposure, not tied to
   any photograph.
 - Owner default (1.0.1): master 1.5 % = log₂ 0.015 = **−6.06 EV**.
-  - The red-line slider defaults to 1/0.015 = 6667 %, so the red line shows at its full
-    photographic brightness at that master.
+  - The red-line slider defaults to 500 % (final 7.5 %) from 1.0.2. In 1.0.1 it was
+    1/0.015 = 6667 %, i.e. full photographic brightness.
   - From 1.0.0 to 1.0.1 the default changed from master 30 % with every layer at 100 %.
 
 ## 13. Disagreements between sources and choices made

@@ -9,13 +9,14 @@ namespace RealAirglow.Tests
     public class DisplayControlsTests
     {
         [Fact]
-        public void DefaultIsOnePointFivePercentWithRedAtFullBrightness()
+        public void DefaultIsOnePointFivePercentWithRedAtFiveHundredPercent()
         {
             var c = new DisplayControls();
             Assert.Equal(0.015, c.MasterTarget, 12);
             Assert.Equal(-6.059, DisplayControls.ExposureValue(0.015), 3);
             foreach (var g in DisplayControls.Groups.Where(g => g != "red")) Assert.Equal(0.015, c.Effective(g), 12);
-            Assert.Equal(1.0, c.Effective("red"), 12);   // owner: red line at its 100 % brightness
+            Assert.Equal(5.0, c.GetGroupTarget("red"), 12);   // owner default from 1.0.2
+            Assert.Equal(0.075, c.Effective("red"), 12);
         }
 
         [Fact]
@@ -93,12 +94,12 @@ namespace RealAirglow.Tests
             foreach (var g in DisplayControls.Groups) Assert.Equal(0.15, c.Effective(g), 12);
             c.ApplyPreset(1); c.Update(1);
             Assert.Equal(0.015, c.Effective("green"), 12);
-            Assert.Equal(1.0, c.Effective("red"), 12);
+            Assert.Equal(0.075, c.Effective("red"), 12);
             c.SetGroup("Na", 3.0); c.SetGroup("red", 1.0); c.Enabled = false;
             c.ResetToDefaults(); c.Update(1);
             Assert.True(c.Enabled);
             Assert.Equal(0.015, c.Effective("Na"), 12);
-            Assert.Equal(1.0, c.Effective("red"), 12);
+            Assert.Equal(0.075, c.Effective("red"), 12);
         }
 
         [Fact]
@@ -121,7 +122,7 @@ namespace RealAirglow.Tests
         }
 
         [Fact]
-        public void SettingsFromBeforeVersionTwoKeepTheNewRedDefault()
+        public void SettingsFromBeforeVersionThreeKeepTheNewRedDefault()
         {
             var old = new System.Collections.Generic.Dictionary<string, string>
             {
@@ -133,9 +134,15 @@ namespace RealAirglow.Tests
             Assert.Equal(0.5, c.GetGroupTarget("green"), 12);
 
             old["version"] = "2";
+            old["layer_red"] = "66.67";
+            c.Load(old);
+            Assert.Equal(5.0, c.GetGroupTarget("red"), 12);
+
+            old["version"] = "3";
+            old["layer_red"] = "1";
             c.Load(old);
             Assert.Equal(1.0, c.GetGroupTarget("red"), 12);
-            Assert.Equal("2", new DisplayControls().Save()["version"]);
+            Assert.Equal("3", new DisplayControls().Save()["version"]);
         }
     }
 

@@ -17,9 +17,9 @@ namespace RealAirglow.Core
         public const double DefaultMaster = 0.015;        // owner default (2026-10-11, 1.0.1): 1.5 % of photographic
         public const double SmoothingSeconds = 0.2;       // brief: smooth changes over ~0.2 s
 
-        /// <summary>Saved-settings format. Version 2 (1.0.1) changed the red-line default, so a
-        /// version 1 file's red value is not loaded.</summary>
-        public const int SettingsVersion = 2;
+        /// <summary>Saved-settings format. Versions 2 (1.0.1) and 3 (1.0.2) changed the red-line
+        /// default, so the red value of an older file is not loaded.</summary>
+        public const int SettingsVersion = 3;
 
         /// <summary>Slider groups, in display order. "continuum" covers FeO-like + NO2.</summary>
         public static readonly string[] Groups = { "green", "red", "OH", "Na", "continuum", "O2" };
@@ -34,14 +34,14 @@ namespace RealAirglow.Core
             { "O2", "O₂ atmospheric bands" },
         };
 
-        /// <summary>Default layer multiplier. The owner wants the red line at its photographic
-        /// (100 %) brightness while the master sits at its default, so red defaults to
-        /// 1 / DefaultMaster (6667 %); every other layer follows the master at 100 %.</summary>
-        public static double DefaultLayer(string group) => group == "red" ? 1.0 / DefaultMaster : 1.0;
+        /// <summary>Default layer multiplier: red 500 % (owner default from 1.0.2; 1.0.1 used
+        /// 6667 %), every other layer 100 %.</summary>
+        public const double DefaultRedLayer = 5.0;
+        public static double DefaultLayer(string group) => group == "red" ? DefaultRedLayer : 1.0;
 
         /// <summary>Presets set the master and all layer sliders. "Realistic photographic" and
         /// "Subtle" use the physical layer ratios (every layer 100 %); "My default" is the owner
-        /// default (master 1.5 %, red line at full photographic brightness).</summary>
+        /// default (master 1.5 %, red line 500 %).</summary>
         public static readonly (string Name, double Master, bool OwnerLayers)[] Presets =
         {
             ("Realistic photographic", 1.00, false),
@@ -141,9 +141,9 @@ namespace RealAirglow.Core
         {
             if (d.TryGetValue("enabled", out var e)) Enabled = !string.Equals(e, "False", StringComparison.OrdinalIgnoreCase);
             if (d.TryGetValue("master", out var m) && TryParse(m, out var mv)) SetMaster(mv, immediate: true);
-            bool oldFormat = SavedVersion(d) < 2;
+            bool oldRed = SavedVersion(d) < 3;
             foreach (var g in Groups)
-                if (!(oldFormat && g == "red") && d.TryGetValue("layer_" + g, out var s) && TryParse(s, out var v))
+                if (!(oldRed && g == "red") && d.TryGetValue("layer_" + g, out var s) && TryParse(s, out var v))
                     SetGroup(g, v, immediate: true);
         }
 

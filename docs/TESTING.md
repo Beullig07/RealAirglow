@@ -5,10 +5,10 @@
 1. **Day and night side:** with the sunlit half of Earth in view (map view or orbit), the airglow
    stays visible on the whole planet. It no longer fades out.
    - Debug… → Exposure shows "Fixed (ISS night)" selected.
-2. **Defaults:** the window shows master 1.5 %, and the red line at 6667 % (final 100 %). These
-   apply even with a settings file from 1.0.0, which is migrated.
-3. **Red line:** from orbit at the limb, the red 630 nm glow above the green line looks as bright
-   as it did at master 100 %, while the green and orange bands are faint.
+2. **Defaults:** the window shows master 1.5 %, and the red line at 500 % (final 7.5 %). These
+   apply even with a settings file from 1.0.0 or 1.0.1, which is migrated.
+3. **Red line:** from orbit at the limb, the red 630 nm glow above the green line is five times
+   brighter, relative to the green and orange bands, than its physical ratio.
 
 ## Retest after the 2026-10-11 fixes (clouds, terminator)
 
@@ -45,14 +45,14 @@ vessel. Screenshots: F1. Send them with the debug window open where it says so.
 1. Toolbar shows the RealAirglow icon (green arc) in flight, in map view and in the Tracking
    Station. Click it: the window opens. Alt+G toggles it too.
 2. Default master reads **1.5 % (−6.1 EV)**.
-   - The red line slider reads 6667 % (final 100 %).
+   - The red line slider reads 500 % (final 7.5 %).
    - The other five read 100 % (final 1.5 %).
 3. Drag the master slider. The airglow brightness follows smoothly, with no flicker, and the
    rest of the scene (planet, sky, stars, clouds, vessel) does not change.
 4. Master 0 % or the "Airglow on" toggle off: the airglow disappears completely. Toggle back on.
 5. Presets:
    - Realistic photographic: every layer final 100 %.
-   - My default: master 1.5 %, red final 100 %.
+   - My default: master 1.5 %, red final 7.5 %.
    - Subtle: every layer final 15 %.
 6. Each layer slider only changes its own layer. Easiest check: Debug… → Science mode, where
    each layer has its own false colour.

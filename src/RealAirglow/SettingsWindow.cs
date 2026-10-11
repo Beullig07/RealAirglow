@@ -91,7 +91,7 @@ namespace RealAirglow
         private static float LayerToSlider(double l) => ToSlider(l, LayerMin, DisplayControls.MaxLayerMultiplier);
         private static double SliderToLayer(float s) => FromSlider(s, LayerMin, DisplayControls.MaxLayerMultiplier);
 
-        /// <summary>Percent with three significant figures (1.5, 30, 6667).</summary>
+        /// <summary>Percent with three significant figures (1.5, 30, 500).</summary>
         private static string Percent(double v)
         {
             double p = v * 100;

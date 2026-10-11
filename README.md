@@ -11,7 +11,7 @@ and from the ground (van Rhijn brightening toward the horizon, dimmed by extinct
 > [`docs/PHYSICS.md`](docs/PHYSICS.md). The shader is checked automatically against an
 > independent Python reference model. The author tested it in their own KSP install.
 
-**Status: 1.0.1.** The static layers and the intensity window work. Variability (gravity waves, solar cycle, tides) and further integration with
+**Status: 1.0.2.** The static layers and the intensity window work. Variability (gravity waves, solar cycle, tides) and further integration with
 Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Requirements
@@ -24,7 +24,7 @@ Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Install
 
-1. Download `RealAirglow-1.0.1.zip` from the
+1. Download `RealAirglow-1.0.2.zip` from the
    [Releases](../../releases) page.
 2. Copy its `GameData/RealAirglow` folder into your KSP `GameData` folder.
 
@@ -37,8 +37,8 @@ Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
   default is **1.5 %**.
 - **Layer sliders:** one per layer (green, red, OH, Na, continuum, O₂), 0–10000 %, each
   multiplying the master. The window shows the final brightness of each layer next to its
-  slider. By default the red line is at 6667 %, so at the 1.5 % master it shows at its full
-  photographic (100 %) brightness. Every other layer is at 100 %.
+  slider. By default the red line is at 500 % (final 7.5 % at the 1.5 % master) and every
+  other layer is at 100 %.
 - **Presets:**
   - Realistic photographic: everything at 100 %.
   - My default: the defaults above.
