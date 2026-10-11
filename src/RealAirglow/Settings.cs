@@ -6,7 +6,9 @@ using UnityEngine.Rendering;
 
 namespace RealAirglow
 {
-    /// <summary>Auto: metered exposure (AutoExposure). Fixed: always the ISS night exposure.</summary>
+    /// <summary>Fixed: always the ISS night exposure, so the airglow shows over the whole planet,
+    /// day and night side (owner default from 1.0.1). Auto: metered exposure (AutoExposure), which
+    /// fades all of it when sunlit ground is in view.</summary>
     public enum ExposureMode { Auto = 0, Fixed = 1 }
 
     /// <summary>Options shown in the debug window, persisted alongside the display controls.</summary>
@@ -16,10 +18,10 @@ namespace RealAirglow
         public SpectralMode Mode = SpectralMode.Camera;
         public double F107 = 100.0;              // sfu, PALACE reference (owner confirmed)
         public bool Extinction = true;
-        public ExposureMode Exposure = ExposureMode.Auto;
+        public ExposureMode Exposure = ExposureMode.Fixed;
         // Debug only: weight emission by the fraction of the solar disc hidden by the planet at
         // the emitting point. Not physical (nightglow does not stop at the terminator); off by
-        // default since the metered exposure handles daylight.
+        // default.
         public bool NightGate = false;
         public CameraEvent LocalEvent = CameraEvent.AfterImageEffectsOpaque;   // behind-atmosphere part, before clouds
         public CameraEvent FrontEvent = CameraEvent.AfterForwardAlpha;         // in-front part, after clouds
@@ -47,7 +49,8 @@ namespace RealAirglow
             if (d.TryGetValue("f107", out var f) && double.TryParse(f, System.Globalization.NumberStyles.Float,
                     System.Globalization.CultureInfo.InvariantCulture, out var fv)) F107 = fv;
             if (d.TryGetValue("extinction", out var e) && bool.TryParse(e, out var ev)) Extinction = ev;
-            if (d.TryGetValue("exposure", out var x) && Enum.TryParse(x, out ExposureMode xm)) Exposure = xm;
+            // Files from before 1.0.1 saved the old Auto default; keep the new Fixed default instead.
+            if (DisplayControls.SavedVersion(d) >= 2 && d.TryGetValue("exposure", out var x) && Enum.TryParse(x, out ExposureMode xm)) Exposure = xm;
             // "nightGateDebug" replaces the Phase 2 key "nightGate" so an old saved True is ignored.
             if (d.TryGetValue("nightGateDebug", out var n) && bool.TryParse(n, out var nv)) NightGate = nv;
             if (d.TryGetValue("frontEvent", out var fe) && Enum.TryParse(fe, out CameraEvent fev)) FrontEvent = fev;

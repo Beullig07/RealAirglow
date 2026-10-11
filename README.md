@@ -11,8 +11,7 @@ and from the ground (van Rhijn brightening toward the horizon, dimmed by extinct
 > [`docs/PHYSICS.md`](docs/PHYSICS.md). The shader is checked automatically against an
 > independent Python reference model. The author tested it in their own KSP install.
 
-**Status: 1.0.0.** The static layers, the intensity window and metered
-exposure work. Variability (gravity waves, solar cycle, tides) and further integration with
+**Status: 1.0.1.** The static layers and the intensity window work. Variability (gravity waves, solar cycle, tides) and further integration with
 Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Requirements
@@ -25,7 +24,7 @@ Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Install
 
-1. Download `RealAirglow-1.0.0.zip` from the
+1. Download `RealAirglow-1.0.1.zip` from the
    [Releases](../../releases) page.
 2. Copy its `GameData/RealAirglow` folder into your KSP `GameData` folder.
 
@@ -33,22 +32,30 @@ Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
 
 - Click the toolbar button (green arc) or press **Alt+G** to open the window. The button is in
   flight, map view and the Tracking Station.
-- **Master intensity:** 0–300 %, with the equivalent EV shown. 100 % is a physically exposed
-  photograph, using the settings of the ISS night photo ISS047-E-1114.
-- **Presets:** Realistic photographic (100 %), My default (30 %, the default) and Subtle (15 %).
-- **Layer sliders:** one per layer (green, red, OH, Na, continuum, O₂), plus an on/off toggle.
+- **Master intensity:** 0–300 % on a log slider, with the equivalent EV shown. 100 % is a
+  physically exposed photograph, using the settings of the ISS night photo ISS047-E-1114. The
+  default is **1.5 %**.
+- **Layer sliders:** one per layer (green, red, OH, Na, continuum, O₂), 0–10000 %, each
+  multiplying the master. The window shows the final brightness of each layer next to its
+  slider. By default the red line is at 6667 %, so at the 1.5 % master it shows at its full
+  photographic (100 %) brightness. Every other layer is at 100 %.
+- **Presets:**
+  - Realistic photographic: everything at 100 %.
+  - My default: the defaults above.
+  - Subtle: everything at 15 %.
+- An on/off toggle.
 - **Debug…** opens a second window with:
   - colour modes: camera, eye and science false colour;
   - extinction on or off;
-  - exposure: auto (metered) or fixed ISS night;
+  - exposure: fixed (the default) or auto-metered;
   - render-event selectors for cloud ordering;
   - a per-layer readout in rayleighs.
 
 Settings are saved in `GameData/RealAirglow/PluginData/settings.cfg`.
 
-**Daylight.** The airglow is never cut at the terminator. Instead the exposure follows what a
-camera's light meter would choose. With sunlit Earth or twilight sky in view, the airglow fades
-out, just as it does in real photos. On the night side you get the full ISS night exposure.
+**Day and night side.** The airglow is drawn over the whole planet all the time, on both the
+day and night side, at a fixed exposure. Debug… has an auto (metered) exposure instead: it
+fades all the airglow out when sunlit Earth is in view, the way a real camera would.
 
 ## Building from source
 

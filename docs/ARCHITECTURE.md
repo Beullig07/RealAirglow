@@ -77,8 +77,13 @@ Decisions:
    the CPU (`Vector3d`), from the local camera or from scaled space × `ScaledSpace.ScaleFactor`,
    then passed in km. The shader intersects spheres about the point of closest approach, which
    is stable at grazing incidence.
-5. **Day/night: metered exposure.** No cut on the emission. The exposure follows an averaging
-   meter over a 16 × 9 grid of view rays (`PHYSICS.md` §5), so airglow shows only in dark views.
+5. **Day/night: fixed exposure by default (1.0.1).** No cut on the emission. The airglow shows
+   over the whole planet, day and night side, at the ISS night exposure.
+   - The owner chose this after seeing the metered mode in game.
+   - The metered exposure (an averaging meter over a 16 × 9 grid of view rays, `PHYSICS.md` §5)
+     remains in the debug window.
+   - Saved settings from before 1.0.1 have no `version` key. Their `exposure` and red-layer
+     values are ignored, so the new defaults apply.
    The Phase 2 geometric night gate remains as a debug toggle, off by default. Its saved key
    was renamed so an old `nightGate = True` is ignored.
 

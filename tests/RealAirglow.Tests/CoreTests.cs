@@ -9,12 +9,13 @@ namespace RealAirglow.Tests
     public class DisplayControlsTests
     {
         [Fact]
-        public void DefaultIsThirtyPercentAndMinusOnePointSevenEv()
+        public void DefaultIsOnePointFivePercentWithRedAtFullBrightness()
         {
             var c = new DisplayControls();
-            Assert.Equal(0.30, c.MasterTarget, 12);
-            Assert.Equal(-1.737, DisplayControls.ExposureValue(0.30), 3);
-            foreach (var g in DisplayControls.Groups) Assert.Equal(0.30, c.Effective(g), 12);
+            Assert.Equal(0.015, c.MasterTarget, 12);
+            Assert.Equal(-6.059, DisplayControls.ExposureValue(0.015), 3);
+            foreach (var g in DisplayControls.Groups.Where(g => g != "red")) Assert.Equal(0.015, c.Effective(g), 12);
+            Assert.Equal(1.0, c.Effective("red"), 12);   // owner: red line at its 100 % brightness
         }
 
         [Fact]
@@ -48,6 +49,7 @@ namespace RealAirglow.Tests
         {
             var c = new DisplayControls();
             c.SetMaster(1.0, immediate: true);
+            foreach (var g in DisplayControls.Groups) c.SetGroup(g, 1.0, immediate: true);
             c.SetGroup("OH", 2.0, immediate: true);
             foreach (var g in DisplayControls.Groups.Where(g => g != "OH")) Assert.Equal(1.0, c.Effective(g), 12);
             Assert.Equal(2.0, c.Effective("OH"), 12);
@@ -61,6 +63,10 @@ namespace RealAirglow.Tests
             Assert.Equal(3.0, c.MasterTarget);
             c.SetMaster(-1.0, immediate: true);
             Assert.Equal(0.0, c.MasterTarget);
+            c.SetGroup("red", 500.0, immediate: true);
+            Assert.Equal(100.0, c.GetGroupTarget("red"));
+            c.SetGroup("red", -1.0, immediate: true);
+            Assert.Equal(0.0, c.GetGroupTarget("red"));
         }
 
         [Fact]
@@ -82,13 +88,17 @@ namespace RealAirglow.Tests
         {
             var c = new DisplayControls();
             c.ApplyPreset(0); c.Update(1);
-            Assert.Equal(1.0, c.Effective("green"), 12);
+            foreach (var g in DisplayControls.Groups) Assert.Equal(1.0, c.Effective(g), 12);
             c.ApplyPreset(2); c.Update(1);
-            Assert.Equal(0.15, c.Effective("green"), 12);
-            c.SetGroup("Na", 3.0); c.Enabled = false;
+            foreach (var g in DisplayControls.Groups) Assert.Equal(0.15, c.Effective(g), 12);
+            c.ApplyPreset(1); c.Update(1);
+            Assert.Equal(0.015, c.Effective("green"), 12);
+            Assert.Equal(1.0, c.Effective("red"), 12);
+            c.SetGroup("Na", 3.0); c.SetGroup("red", 1.0); c.Enabled = false;
             c.ResetToDefaults(); c.Update(1);
             Assert.True(c.Enabled);
-            Assert.Equal(0.30, c.Effective("Na"), 12);
+            Assert.Equal(0.015, c.Effective("Na"), 12);
+            Assert.Equal(1.0, c.Effective("red"), 12);
         }
 
         [Fact]
@@ -108,6 +118,24 @@ namespace RealAirglow.Tests
             var fresh = new DisplayControls();
             fresh.SetBodyDefaultMaster(0.2);
             Assert.Equal(0.2, fresh.Effective("green"), 12);
+        }
+
+        [Fact]
+        public void SettingsFromBeforeVersionTwoKeepTheNewRedDefault()
+        {
+            var old = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["master"] = "0.015", ["layer_red"] = "1", ["layer_green"] = "0.5",
+            };
+            var c = new DisplayControls();
+            c.Load(old);
+            Assert.Equal(DisplayControls.DefaultLayer("red"), c.GetGroupTarget("red"), 12);
+            Assert.Equal(0.5, c.GetGroupTarget("green"), 12);
+
+            old["version"] = "2";
+            c.Load(old);
+            Assert.Equal(1.0, c.GetGroupTarget("red"), 12);
+            Assert.Equal("2", new DisplayControls().Save()["version"]);
         }
     }
 

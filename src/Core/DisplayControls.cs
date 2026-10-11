@@ -12,9 +12,14 @@ namespace RealAirglow.Core
     /// </summary>
     public sealed class DisplayControls
     {
-        public const double MaxMultiplier = 3.0;      // 300 %
-        public const double DefaultMaster = 0.30;     // owner default: 30 % of photographic
-        public const double SmoothingSeconds = 0.2;   // brief: smooth changes over ~0.2 s
+        public const double MaxMultiplier = 3.0;          // master: 300 %
+        public const double MaxLayerMultiplier = 100.0;   // per layer: 10000 %
+        public const double DefaultMaster = 0.015;        // owner default (2026-10-11, 1.0.1): 1.5 % of photographic
+        public const double SmoothingSeconds = 0.2;       // brief: smooth changes over ~0.2 s
+
+        /// <summary>Saved-settings format. Version 2 (1.0.1) changed the red-line default, so a
+        /// version 1 file's red value is not loaded.</summary>
+        public const int SettingsVersion = 2;
 
         /// <summary>Slider groups, in display order. "continuum" covers FeO-like + NO2.</summary>
         public static readonly string[] Groups = { "green", "red", "OH", "Na", "continuum", "O2" };
@@ -29,11 +34,19 @@ namespace RealAirglow.Core
             { "O2", "O₂ atmospheric bands" },
         };
 
-        public static readonly (string Name, double Master)[] Presets =
+        /// <summary>Default layer multiplier. The owner wants the red line at its photographic
+        /// (100 %) brightness while the master sits at its default, so red defaults to
+        /// 1 / DefaultMaster (6667 %); every other layer follows the master at 100 %.</summary>
+        public static double DefaultLayer(string group) => group == "red" ? 1.0 / DefaultMaster : 1.0;
+
+        /// <summary>Presets set the master and all layer sliders. "Realistic photographic" and
+        /// "Subtle" use the physical layer ratios (every layer 100 %); "My default" is the owner
+        /// default (master 1.5 %, red line at full photographic brightness).</summary>
+        public static readonly (string Name, double Master, bool OwnerLayers)[] Presets =
         {
-            ("Realistic photographic", 1.00),
-            ("My default", 0.30),
-            ("Subtle", 0.15),
+            ("Realistic photographic", 1.00, false),
+            ("My default", DefaultMaster, true),
+            ("Subtle", 0.15, false),
         };
 
         private readonly Dictionary<string, double> groupTarget = new Dictionary<string, double>();
@@ -49,8 +62,8 @@ namespace RealAirglow.Core
             masterRamp = new Ramp(DefaultMaster);
             foreach (var g in Groups)
             {
-                groupTarget[g] = 1.0;
-                groupRamp[g] = new Ramp(1.0);
+                groupTarget[g] = DefaultLayer(g);
+                groupRamp[g] = new Ramp(DefaultLayer(g));
             }
         }
 
@@ -62,7 +75,9 @@ namespace RealAirglow.Core
             SetMaster(defaultMaster, immediate: true);
         }
 
-        public static double Clamp(double v) => double.IsNaN(v) ? 0.0 : Math.Max(0.0, Math.Min(MaxMultiplier, v));
+        public static double Clamp(double v) => Clamp(v, MaxMultiplier);
+        public static double ClampLayer(double v) => Clamp(v, MaxLayerMultiplier);
+        private static double Clamp(double v, double max) => double.IsNaN(v) ? 0.0 : Math.Max(0.0, Math.Min(max, v));
 
         public void SetMaster(double value, bool immediate = false)
         {
@@ -75,7 +90,7 @@ namespace RealAirglow.Core
         public void SetGroup(string group, double value, bool immediate = false)
         {
             if (!groupTarget.ContainsKey(group)) throw new ArgumentException("unknown group " + group);
-            groupTarget[group] = Clamp(value);
+            groupTarget[group] = ClampLayer(value);
             groupRamp[group].SetTarget(groupTarget[group], immediate);
         }
 
@@ -83,10 +98,15 @@ namespace RealAirglow.Core
         {
             Enabled = true;
             SetMaster(defaultMaster);
-            foreach (var g in Groups) SetGroup(g, 1.0);
+            foreach (var g in Groups) SetGroup(g, DefaultLayer(g));
         }
 
-        public void ApplyPreset(int index) => SetMaster(Presets[index].Master);
+        public void ApplyPreset(int index)
+        {
+            var p = Presets[index];
+            SetMaster(p.Master);
+            foreach (var g in Groups) SetGroup(g, p.OwnerLayers ? DefaultLayer(g) : 1.0);
+        }
 
         /// <summary>Advance the 0.2 s smoothing ramps.</summary>
         public void Update(double dtSeconds)
@@ -108,6 +128,7 @@ namespace RealAirglow.Core
         {
             var d = new Dictionary<string, string>
             {
+                ["version"] = SettingsVersion.ToString(CultureInfo.InvariantCulture),
                 ["enabled"] = Enabled ? "True" : "False",
                 ["master"] = MasterTarget.ToString("R", CultureInfo.InvariantCulture),
             };
@@ -120,9 +141,15 @@ namespace RealAirglow.Core
         {
             if (d.TryGetValue("enabled", out var e)) Enabled = !string.Equals(e, "False", StringComparison.OrdinalIgnoreCase);
             if (d.TryGetValue("master", out var m) && TryParse(m, out var mv)) SetMaster(mv, immediate: true);
+            bool oldFormat = SavedVersion(d) < 2;
             foreach (var g in Groups)
-                if (d.TryGetValue("layer_" + g, out var s) && TryParse(s, out var v)) SetGroup(g, v, immediate: true);
+                if (!(oldFormat && g == "red") && d.TryGetValue("layer_" + g, out var s) && TryParse(s, out var v))
+                    SetGroup(g, v, immediate: true);
         }
+
+        /// <summary>Format version of saved settings; files written before 1.0.1 have none (1).</summary>
+        public static int SavedVersion(IReadOnlyDictionary<string, string> d) =>
+            d.TryGetValue("version", out var s) && int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : 1;
 
         private static bool TryParse(string s, out double v) =>
             double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out v);

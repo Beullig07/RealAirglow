@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.1 (2026-10-11)
+
+### Changed
+- The airglow now shows over the whole planet, day and night side, at all times. Exposure
+  defaults to Fixed (ISS night). The metered auto-exposure, which faded all of it when sunlit
+  ground was in view, is still in the debug window.
+- Default master intensity is 1.5 % (was 30 %).
+- The red line defaults to 6667 % of the master, so at the 1.5 % default it shows at its full
+  photographic (100 %) brightness.
+  - Layer sliders now span 0–10000 % on a log scale and show each layer's final brightness.
+- Master slider range is 0.1–300 % (log), so values near the default get more travel.
+- Presets set the layer sliders too:
+  - Realistic photographic: every layer 100 %.
+  - My default: master 1.5 %, red at 100 %.
+  - Subtle: every layer 15 %.
+- Settings from 1.0.0 are migrated: their saved exposure mode and red-layer value are replaced
+  by the new defaults; everything else is kept.
+
 ## 1.0.0 (2026-10-11)
 
 First public release. AI-assisted (see README). Windows/DX11 only.

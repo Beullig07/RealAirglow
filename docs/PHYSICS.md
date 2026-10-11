@@ -323,7 +323,12 @@ is what an averaging reflected-light meter would choose for the scene:
   - Any sunlit ground in frame drops the exposure by orders of magnitude, so airglow is visible
     only when the view is dark.
   - The meter is smoothed with a 0.5 s time constant (display tuning, not physics).
-- **"Fixed" mode** (debug window) keeps the ISS night exposure regardless of the scene.
+- **"Fixed" mode** keeps the ISS night exposure regardless of the scene.
+
+**Default from 1.0.1 (owner decision 2026-10-11): Fixed.** In game, the metered exposure faded
+the airglow over the whole planet whenever sunlit ground was in view. The owner wants the airglow
+on the whole planet, day and night side, at all times. Metered exposure stays available in the
+debug window. This is a display choice; the emission model is unchanged.
 
 ## 6. Local time and inter-layer lags
 
@@ -497,7 +502,10 @@ Multiple scattering and ground albedo would add more and are not estimated yet.
   nearly the same effective exposure.
 - The ground all-sky render uses an illustrative 20 s, f/2.8, ISO 6400 exposure, not tied to
   any photograph.
-- Owner default: master 30 % = log₂ 0.3 = **−1.74 EV**.
+- Owner default (1.0.1): master 1.5 % = log₂ 0.015 = **−6.06 EV**.
+  - The red-line slider defaults to 1/0.015 = 6667 %, so the red line shows at its full
+    photographic brightness at that master.
+  - From 1.0.0 to 1.0.1 the default changed from master 30 % with every layer at 100 %.
 
 ## 13. Disagreements between sources and choices made
 

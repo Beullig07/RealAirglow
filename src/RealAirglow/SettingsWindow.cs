@@ -78,15 +78,29 @@ namespace RealAirglow
             else if (!over && locked) { InputLockManager.RemoveControlLock(LockId); locked = false; }
         }
 
-        // Master slider: position 0 is off; above that, logarithmic from 1 % to 300 % so values
-        // below 50 % get most of the travel.
+        // Sliders: position 0 is off; above that, logarithmic. Master spans 0.1 %..300 % so the
+        // 1.5 % default sits in the useful part of the travel; layers span 1 %..10000 %.
         private const float SliderOff = 0.02f;
-        private static float MasterToSlider(double m) =>
-            m <= 0 ? 0f : SliderOff + (1 - SliderOff) * (float)(Math.Log(Math.Max(m, 0.01) / 0.01) / Math.Log(300.0));
-        private static double SliderToMaster(float s) =>
-            s < SliderOff ? 0.0 : 0.01 * Math.Pow(300.0, (s - SliderOff) / (1 - SliderOff));
+        private const double MasterMin = 0.001, LayerMin = 0.01;
+        private static float ToSlider(double v, double min, double max) =>
+            v <= 0 ? 0f : SliderOff + (1 - SliderOff) * (float)(Math.Log(Math.Max(v, min) / min) / Math.Log(max / min));
+        private static double FromSlider(float s, double min, double max) =>
+            s < SliderOff ? 0.0 : min * Math.Pow(max / min, (s - SliderOff) / (1 - SliderOff));
+        private static float MasterToSlider(double m) => ToSlider(m, MasterMin, DisplayControls.MaxMultiplier);
+        private static double SliderToMaster(float s) => FromSlider(s, MasterMin, DisplayControls.MaxMultiplier);
+        private static float LayerToSlider(double l) => ToSlider(l, LayerMin, DisplayControls.MaxLayerMultiplier);
+        private static double SliderToLayer(float s) => FromSlider(s, LayerMin, DisplayControls.MaxLayerMultiplier);
 
-        private static string Percent(double v) => (v * 100).ToString("0.#", CultureInfo.InvariantCulture);
+        /// <summary>Percent with three significant figures (1.5, 30, 6667).</summary>
+        private static string Percent(double v)
+        {
+            double p = v * 100;
+            return p.ToString(p >= 100 ? "0" : p >= 10 ? "0.#" : "0.##", CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>Round to three significant figures so slider drags land on readable values.</summary>
+        private static double Round3(double v) =>
+            v <= 0 ? 0 : Math.Round(v, Math.Max(0, Math.Min(15, 2 - (int)Math.Floor(Math.Log10(v)))));
 
         private void DrawSettings(int id)
         {
@@ -103,7 +117,7 @@ namespace RealAirglow
             double fromSlider = SliderToMaster(s);
             if (Math.Abs(fromSlider - c.MasterTarget) > 1e-4 && Math.Abs(s - MasterToSlider(c.MasterTarget)) > 1e-4)
             {
-                c.SetMaster(Math.Round(fromSlider, 3)); masterText = Percent(c.MasterTarget); MarkDirty();
+                c.SetMaster(Round3(fromSlider)); masterText = Percent(c.MasterTarget); MarkDirty();
             }
             masterText = GUILayout.TextField(masterText, GUILayout.Width(50));
             if (GUILayout.Button("Set", GUILayout.Width(40)) &&
@@ -125,9 +139,11 @@ namespace RealAirglow
             GUILayout.Label("Per-layer intensity (final = master × layer)");
             foreach (var g in DisplayControls.Groups)
             {
-                GUILayout.Label(DisplayControls.GroupLabels[g] + ": " + Percent(c.GetGroupTarget(g)) + " %");
-                float v = GUILayout.HorizontalSlider((float)c.GetGroupTarget(g), 0f, (float)DisplayControls.MaxMultiplier);
-                if (Math.Abs(v - c.GetGroupTarget(g)) > 1e-4) { c.SetGroup(g, Math.Round(v, 2)); MarkDirty(); }
+                double l = c.GetGroupTarget(g);
+                GUILayout.Label(DisplayControls.GroupLabels[g] + ": " + Percent(l) + " %  (final " + Percent(c.MasterTarget * l) + " %)");
+                float pos = LayerToSlider(l);
+                float v = GUILayout.HorizontalSlider(pos, 0f, 1f);
+                if (Math.Abs(v - pos) > 1e-4) { c.SetGroup(g, Round3(SliderToLayer(v))); MarkDirty(); }
             }
 
             GUILayout.Space(6);
