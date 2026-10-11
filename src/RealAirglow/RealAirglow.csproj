@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>8.0</LangVersion>
+    <AssemblyName>RealAirglow</AssemblyName>
+    <RootNamespace>RealAirglow</RootNamespace>
+    <Version>0.2.0</Version>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>portable</DebugType>
+    <KSPRoot Condition="'$(KSPRoot)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program</KSPRoot>
+    <KSPManaged>$(KSPRoot)\KSP_x64_Data\Managed</KSPManaged>
+    <RepoRoot>$(MSBuildThisFileDirectory)..\..\</RepoRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Unity-free core (also compiled by the unit tests) and the material binder shared with
+         the Unity comparison harness. -->
+    <Compile Include="..\Core\**\*.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\unity\RealAirglowShaders\Assets\Shared\*.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp" HintPath="$(KSPManaged)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="Assembly-CSharp-firstpass" HintPath="$(KSPManaged)\Assembly-CSharp-firstpass.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(KSPManaged)\UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(KSPManaged)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AssetBundleModule" HintPath="$(KSPManaged)\UnityEngine.AssetBundleModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(KSPManaged)\UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(KSPManaged)\UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(KSPManaged)\UnityEngine.TextRenderingModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AnimationModule" HintPath="$(KSPManaged)\UnityEngine.AnimationModule.dll" Private="false" />
+    <Reference Include="UnityEngine.UI" HintPath="$(KSPManaged)\UnityEngine.UI.dll" Private="false" />
+  </ItemGroup>
+  <!-- Copy the plugin into the repo's GameData folder; with -p:Deploy=true also into KSP. -->
+  <Target Name="CopyToGameData" AfterTargets="Build">
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(RepoRoot)GameData\RealAirglow\Plugins" />
+  </Target>
+  <Target Name="Deploy" AfterTargets="CopyToGameData" Condition="'$(Deploy)' == 'true'">
+    <ItemGroup>
+      <GameDataFiles Include="$(RepoRoot)GameData\RealAirglow\**\*" Exclude="$(RepoRoot)GameData\RealAirglow\PluginData\**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(GameDataFiles)" DestinationFiles="@(GameDataFiles->'$(KSPRoot)\GameData\RealAirglow\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+</Project>
