@@ -27,7 +27,11 @@ namespace RealAirglow.Core
         public double SolarCoefficient;      // relative change per 100 sfu
         public double[] CameraRGB = new double[3], CieRGB = new double[3];
         public double ScotopicY;
-        public double[] SigmaRayleigh = new double[3], SigmaOzone = new double[3], AerosolFactor = new double[3];
+        // Extinction bins (BodyAirglow.ExtinctionBinsNm): per bin camera RGB, CIE RGB, scotopic Y,
+        // and (sigma Rayleigh m^2, sigma O3 m^2, aerosol spectral factor).
+        public double[] BinCameraRGB = new double[0], BinCieRGB = new double[0], BinScotopicY = new double[0];
+        public double[] BinExtinction = new double[0];
+        public int BinCount => BinScotopicY.Length;
 
         public const double SupportHwhm = 4.5;   // profile support, as in profiles.AsymGaussian
         public double BandLowKm => Math.Max(0.0, PeakKm - SupportHwhm * HwhmLowKm);
@@ -87,7 +91,7 @@ namespace RealAirglow.Core
         public struct LayerResult
         {
             public double ColumnR;            // apparent column, rayleighs
-            public double[] TransmittedR;     // column x transmittance per camera channel
+            public double[] CameraRGB;        // transmitted camera-mode linear sRGB, cd m^-2
         }
 
         private static readonly double[] GlX, GlW;
@@ -182,7 +186,7 @@ namespace RealAirglow.Core
             for (int i = 0; i < layers.Count; i++)
             {
                 var L = layers[i];
-                res[i].TransmittedR = new double[3];
+                res[i].CameraRGB = new double[3];
                 if (!L.Enabled) continue;
                 int n = BandIntervals(originKm, dir, radiusKm + L.BandLowKm, radiusKm + L.BandHighKm, tEnd, ea, eb);
                 double scale = L.IntensityAt(f107, f107Ref);
@@ -200,8 +204,11 @@ namespace RealAirglow.Core
                     double nAir = 0, nO3 = 0, aer = 0;
                     for (int j = 0; j < nAbs; j++)
                         if (ab[j] <= ea[k] + 1e-3) { nAir += absAir[j]; nO3 += absO3[j]; aer += absAer[j]; }
-                    for (int c = 0; c < 3; c++)
-                        res[i].TransmittedR[c] += col * Math.Exp(-L.SigmaRayleigh[c] * nAir - L.SigmaOzone[c] * nO3 - L.AerosolFactor[c] * aer);
+                    for (int k2 = 0; k2 < L.BinCount; k2++)
+                    {
+                        double T = Math.Exp(-L.BinExtinction[3 * k2] * nAir - L.BinExtinction[3 * k2 + 1] * nO3 - L.BinExtinction[3 * k2 + 2] * aer);
+                        for (int c = 0; c < 3; c++) res[i].CameraRGB[c] += col * T * L.BinCameraRGB[3 * k2 + c];
+                    }
                 }
             }
             return res;

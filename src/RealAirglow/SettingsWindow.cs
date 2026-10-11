@@ -206,8 +206,7 @@ namespace RealAirglow
                     var L = addon.Model.Layers[i];
                     if (L.Group != g) continue;
                     col += res[i].ColumnR;
-                    for (int ch = 0; ch < 3; ch++)
-                        y += res[i].TransmittedR[ch] * L.CameraRGB[ch] * new[] { 0.2126729, 0.7151522, 0.0721750 }[ch];
+                    y += res[i].CameraRGB[0] * 0.2126729 + res[i].CameraRGB[1] * 0.7151522 + res[i].CameraRGB[2] * 0.0721750;
                 }
                 lum += y;
                 GUILayout.Label($"  {g,-9} {col,12:G4} R   {y:G3} cd/m²");

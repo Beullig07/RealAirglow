@@ -130,6 +130,15 @@ namespace RealAirglow.Tests
             Assert.Equal("Earth", e.Body);
             Assert.Equal(9, e.Layers.Count);
             Assert.Equal(6, e.Lower.AirLogDensityPoly.Length);
+            Assert.Equal(12, e.ExtinctionBinsNm.Length);
+            // The bins partition the visible spectrum: their colours sum to the layer total.
+            foreach (var l in e.Layers)
+                for (int c = 0; c < 3; c++)
+                {
+                    double sum = 0;
+                    for (int k = 0; k < l.BinCount; k++) sum += l.BinCameraRGB[3 * k + c];
+                    Assert.Equal(l.CameraRGB[c], sum, Math.Abs(l.CameraRGB[c]) * 1e-4 + 1e-30);
+                }
             Assert.Contains(e.Layers, l => l.Name == "OI 557.7 mesospheric" && Math.Abs(l.IntensityR - 162.67) < 0.01);
         }
 
@@ -183,8 +192,9 @@ namespace RealAirglow.Tests
             var o = new Vec3(0, 0, R + 1e-3);
             var res = AirglowIntegrator.Integrate(o, new Vec3(0, 0, 1), R, e.Layers, e.Lower, 100, 100);
             int g = e.Layers.FindIndex(l => l.Name == "OI 557.7 mesospheric");
-            for (int c = 0; c < 3; c++)
-                Assert.Equal(0.84431, res[g].TransmittedR[c] / res[g].ColumnR, 3);
+            var L = e.Layers[g];
+            double luma(double[] v) => v[0] * 0.2126729 + v[1] * 0.7151522 + v[2] * 0.0721750;
+            Assert.Equal(0.84431, luma(res[g].CameraRGB) / (res[g].ColumnR * luma(L.CameraRGB)), 3);
         }
 
         [Fact]

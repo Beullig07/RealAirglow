@@ -10,8 +10,11 @@ Per layer:
 * cameraRGB / cieRGB: linear sRGB per rayleigh of apparent column (luminance units cd m^-2),
   for the Nikon D3 camera response and the CIE 1931 observer;
 * scotopicY: scotopic luminance (cd m^-2) per rayleigh, for the eye mode;
-* sigmaRayleigh / sigmaOzone (m^2) and aerosolFactor per camera channel: response-weighted
-  means for the extinction terms (first order in optical depth; docs/PHYSICS.md §11).
+* extinction bins: the visible spectrum is split into fixed wavelength bins (EXTINCTION_BINS_NM);
+  per bin the layer's camera RGB, CIE RGB and scotopic weights, and its radiance-weighted mean
+  Rayleigh and ozone cross-sections and aerosol spectral factor. The shader applies one
+  transmittance per bin, which keeps the error below 1 % in luminance down to 1 deg elevation
+  (docs/PHYSICS.md §11).
 """
 from __future__ import annotations
 
@@ -25,15 +28,36 @@ from airglow_ref.colour import GRID_NM, component_spectrum
 OUT = Path(__file__).resolve().parent.parent / "GameData" / "RealAirglow" / "Config" / "Earth.cfg"
 
 
-def channel_means(comp, resp, quantity_nm):
-    """Response-weighted mean of a spectral quantity per output channel (camera RGB space
-    before the colour matrix, so weights are positive)."""
+EXTINCTION_BINS_NM = [360, 420, 460, 490, 520, 545, 570, 595, 620, 650, 690, 830]
+
+
+def extinction_bins(comp, cam, cie, lam_o3, sig_o3, lower):
+    """Per-bin colour weights and mean extinction cross-sections for one component."""
+    from airglow_ref.constants import KM_SCOTOPIC
     line_nm, line_W, cont_W = component_spectrum(comp)
-    wl, wc = resp.weights(line_nm), resp.weights(GRID_NM)
-    ql, qc = quantity_nm(line_nm), quantity_nm(GRID_NM)
-    num = (line_W * ql) @ wl + (cont_W * qc) @ wc
-    den = line_W @ wl + cont_W @ wc
-    return np.where(den > 0, num / np.where(den > 0, den, 1), 0.0)
+    lam = np.concatenate([line_nm, GRID_NM])
+    W = np.concatenate([line_W, cont_W])
+    lv, vs = data.cie_v_scotopic()
+    raw_cam = (np.concatenate([cam.weights(line_nm), cam.weights(GRID_NM)]) * W[:, None])
+    raw_cie = (np.concatenate([cie.weights(line_nm), cie.weights(GRID_NM)]) * W[:, None])
+    scot = KM_SCOTOPIC * np.interp(lam, lv, vs, left=0, right=0) * W
+    sR = atmosphere.rayleigh_cross_section(lam)
+    sO = np.interp(lam, lam_o3, sig_o3)
+    aF = lower.aerosol_spectral_factor(lam)
+    idx = np.digitize(lam, EXTINCTION_BINS_NM) - 1
+    out = []
+    for k in range(len(EXTINCTION_BINS_NM) - 1):
+        m = idx == k
+        w = W[m]
+        if w.sum() > 0:
+            wn = w / w.sum()
+            sig = (sR[m] @ wn, sO[m] @ wn, aF[m] @ wn)
+        else:
+            mid = 0.5 * (EXTINCTION_BINS_NM[k] + EXTINCTION_BINS_NM[k + 1])
+            sig = (float(atmosphere.rayleigh_cross_section(mid)), float(np.interp(mid, lam_o3, sig_o3)),
+                   float(lower.aerosol_spectral_factor(mid)))
+        out.append((raw_cam[m].sum(0) @ cam.to_rgb.T, raw_cie[m].sum(0) @ cie.to_rgb.T, scot[m].sum(), sig))
+    return out
 
 
 def air_density_fit(top_km=60.0, degree=5):
@@ -79,12 +103,12 @@ def main():
         f"\t\taerosolScaleHeight_km = {lower.aerosol_scale_height_km:g}   // tuning",
         f"\t\ttop_km = {lower.top_km:g}",
         "\t}",
+        f"\textinctionBins_nm = {fmt(np.array(EXTINCTION_BINS_NM, float))}   // bin edges, vacuum nm",
     ]
     for c in comps:
         rgb_cam = cam.component_rgb(c)
         rgb_cie = cie.component_rgb(c)
         _, Ls = colour.luminances(c)
-        lum = cam.component_rgb(c) @ colour.LUMA
         # Camera-luminance-weighted solar coefficient over the component's visible lines.
         line_nm, line_W, cont_W = component_spectrum(c)
         Yl = line_W * (cam.weights(line_nm) @ cam.to_rgb.T @ colour.LUMA) if line_nm.size else np.zeros(0)
@@ -93,9 +117,7 @@ def main():
         num = (Yl * msce_lines).sum() + Yc * c.cont_msce
         den = Yl.sum() + Yc
         msce = num / den if den > 0 else 0.0
-        sR = channel_means(c, cam, atmosphere.rayleigh_cross_section)
-        sO = channel_means(c, cam, lambda l: np.interp(l, lam_o3, sig_o3))
-        aF = channel_means(c, cam, lower.aerosol_spectral_factor)
+        bins = extinction_bins(c, cam, cie, lam_o3, sig_o3, lower)
         p = c.profile
         lines += [
             "\tLAYER",
@@ -111,9 +133,12 @@ def main():
             f"\t\tcameraRGB = {fmt(rgb_cam)}   // linear sRGB, cd m^-2 per R",
             f"\t\tcieRGB = {fmt(rgb_cie)}",
             f"\t\tscotopicY = {Ls:.6g}",
-            f"\t\tsigmaRayleigh = {fmt(sR)}   // m^2, per camera channel",
-            f"\t\tsigmaOzone = {fmt(sO)}",
-            f"\t\taerosolFactor = {fmt(aF)}",
+            "\t\t// Extinction bins (edges in extinctionBins_nm): camera RGB, CIE RGB, scotopic Y per",
+            "\t\t// bin, then per bin sigma Rayleigh (m^2), sigma O3 (m^2), aerosol spectral factor",
+            f"\t\tbinCameraRGB = {fmt(np.concatenate([b[0] for b in bins]))}",
+            f"\t\tbinCieRGB = {fmt(np.concatenate([b[1] for b in bins]))}",
+            f"\t\tbinScotopicY = {fmt(np.array([b[2] for b in bins]))}",
+            f"\t\tbinExtinction = {fmt(np.concatenate([b[3] for b in bins]))}",
             "\t}",
         ]
     lines.append("}")

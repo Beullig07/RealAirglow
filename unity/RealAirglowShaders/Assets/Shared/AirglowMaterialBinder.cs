@@ -33,6 +33,7 @@ namespace RealAirglow
     public static class AirglowMaterialBinder
     {
         public const int MaxLayers = 12;
+        public const int MaxBins = 12;   // extinction wavelength bins per layer (Earth.cfg uses 11)
         // Solar angular radius at 1 AU: IAU 2015 nominal solar radius 695 700 km / 1 au.
         public const float SunAngularRadius = (float)(695700.0 / 149597870.7);
 
@@ -44,7 +45,7 @@ namespace RealAirglow
         };
 
         private static readonly Vector4[] shape = new Vector4[MaxLayers], colour = new Vector4[MaxLayers],
-            sigR = new Vector4[MaxLayers], sigO = new Vector4[MaxLayers], aer = new Vector4[MaxLayers];
+            binColour = new Vector4[MaxLayers * MaxBins], binExt = new Vector4[MaxLayers * MaxBins];
 
         private const double Luma0 = 0.2126729, Luma1 = 0.7151522, Luma2 = 0.0721750;
 
@@ -62,28 +63,26 @@ namespace RealAirglow
                 double norm = 0.5 * Math.Sqrt(Math.PI / Math.Log(2.0)) * (L.HwhmLowKm + L.HwhmHighKm);
                 double scale = L.Enabled ? L.IntensityAt(f107, body.F107Reference) * displayScale(L.Group) / norm : 0.0;
                 shape[i] = new Vector4((float)L.PeakKm, (float)L.HwhmLowKm, (float)L.HwhmHighKm, (float)scale);
-                switch (mode)
+                ScienceColours.TryGetValue(L.Group, out var sc);
+                colour[i] = ModeColour(mode, L.CameraRGB, 0, L.CieRGB, L.ScotopicY, sc);
+                int nb = Math.Min(L.BinCount, MaxBins);
+                for (int k = 0; k < MaxBins; k++)
                 {
-                    case SpectralMode.Eye:
-                        colour[i] = new Vector4((float)L.CieRGB[0], (float)L.CieRGB[1], (float)L.CieRGB[2], (float)L.ScotopicY);
-                        break;
-                    case SpectralMode.Science:
-                        double y = L.CameraRGB[0] * Luma0 + L.CameraRGB[1] * Luma1 + L.CameraRGB[2] * Luma2;
-                        ScienceColours.TryGetValue(L.Group, out var c);
-                        colour[i] = new Vector4((float)(c.r * y), (float)(c.g * y), (float)(c.b * y), 0f);
-                        break;
-                    default:
-                        colour[i] = new Vector4((float)L.CameraRGB[0], (float)L.CameraRGB[1], (float)L.CameraRGB[2], 0f);
-                        break;
+                    int j = i * MaxBins + k;
+                    if (k >= nb) { binColour[j] = Vector4.zero; binExt[j] = Vector4.zero; continue; }
+                    binColour[j] = ModeColour(mode, L.BinCameraRGB, 3 * k, L.BinCieRGB, L.BinScotopicY[k], sc);
+                    binExt[j] = new Vector4((float)L.BinExtinction[3 * k], (float)L.BinExtinction[3 * k + 1],
+                        (float)L.BinExtinction[3 * k + 2], 0f);
                 }
-                sigR[i] = V(L.SigmaRayleigh); sigO[i] = V(L.SigmaOzone); aer[i] = V(L.AerosolFactor);
             }
+            int bins = 0;
+            for (int i = 0; i < n; i++) bins = Math.Max(bins, Math.Min(body.Layers[i].BinCount, MaxBins));
             m.SetInt("_LayerCount", n);
             m.SetVectorArray("_LayerShape", shape);
             m.SetVectorArray("_LayerColour", colour);
-            m.SetVectorArray("_LayerSigmaR", sigR);
-            m.SetVectorArray("_LayerSigmaO3", sigO);
-            m.SetVectorArray("_LayerAerosol", aer);
+            m.SetInt("_BinCount", bins);
+            m.SetVectorArray("_BinColour", binColour);
+            m.SetVectorArray("_BinExtinction", binExt);
 
             var p = body.Lower.AirLogDensityPoly;
             double C(int k) => k < p.Length ? p[k] : 0.0;
@@ -133,7 +132,21 @@ namespace RealAirglow
             return mesh;
         }
 
-        private static Vector4 V(double[] a) => new Vector4((float)a[0], (float)a[1], (float)a[2], 0f);
+        /// <summary>Colour weights for the response mode: rgb in cd m^-2 per rayleigh, a = scotopic Y
+        /// (eye mode only). Science mode uses the group's false colour scaled by camera luminance.</summary>
+        private static Vector4 ModeColour(SpectralMode mode, double[] cam, int o, double[] cie, double scot, Color science)
+        {
+            switch (mode)
+            {
+                case SpectralMode.Eye:
+                    return new Vector4((float)cie[o], (float)cie[o + 1], (float)cie[o + 2], (float)scot);
+                case SpectralMode.Science:
+                    double y = cam[o] * Luma0 + cam[o + 1] * Luma1 + cam[o + 2] * Luma2;
+                    return new Vector4((float)(science.r * y), (float)(science.g * y), (float)(science.b * y), 0f);
+                default:
+                    return new Vector4((float)cam[o], (float)cam[o + 1], (float)cam[o + 2], 0f);
+            }
+        }
 
         private static void SetKeyword(Material m, string k, bool on)
         {

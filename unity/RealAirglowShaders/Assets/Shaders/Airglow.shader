@@ -29,6 +29,7 @@ Shader "RealAirglow/Airglow"
             #include "UnityCG.cginc"
 
             #define MAX_LAYERS 12
+            #define MAX_BINS 12
             #define GL_N 16
             #define LN2 0.69314718
 
@@ -53,9 +54,11 @@ Shader "RealAirglow/Airglow"
             int _LayerCount;
             float4 _LayerShape[MAX_LAYERS];   // x peak km, y HWHM below, z HWHM above, w column scale (R / unit profile integral)
             float4 _LayerColour[MAX_LAYERS];  // rgb: linear sRGB cd m^-2 per R (mode dependent); a: scotopic cd m^-2 per R
-            float4 _LayerSigmaR[MAX_LAYERS];  // Rayleigh cross-section per channel, m^2
-            float4 _LayerSigmaO3[MAX_LAYERS]; // ozone cross-section per channel, m^2
-            float4 _LayerAerosol[MAX_LAYERS]; // aerosol spectral factor per channel
+            // Extinction wavelength bins, index layer * MAX_BINS + bin: colour weights as above,
+            // and (sigma Rayleigh m^2, sigma O3 m^2, aerosol spectral factor).
+            int _BinCount;
+            float4 _BinColour[MAX_LAYERS * MAX_BINS];
+            float4 _BinExtinction[MAX_LAYERS * MAX_BINS];
             float4 _AirPoly0;           // ln(n / m^-3) = sum c_k (z/top)^k: c0..c3
             float4 _AirPoly1;           // c4, c5, top km, unused
             float4 _Ozone;              // x column (m^-2), y peak km, z sigma km
@@ -233,15 +236,21 @@ Shader "RealAirglow/Airglow"
                             col += w;
                         }
                         col *= half_ * shape.w;   // rayleighs (scale includes the display multiplier)
-                        float3 T = 1;
+                        float3 c = 0;   // absorber columns between the camera and this interval
                     #if defined(EXTINCTION_ON)
-                        float3 c = 0;
                         if (nAbs > 0 && a0.y <= iv.x + 1e-3) c += absC0;
                         if (nAbs > 1 && a1.y <= iv.x + 1e-3) c += absC1;
-                        T = exp(-_LayerSigmaR[l].xyz * c.x - _LayerSigmaO3[l].xyz * c.y - _LayerAerosol[l].xyz * c.z);
                     #endif
-                        sum.rgb += col * T * _LayerColour[l].rgb;
-                        sum.a += col * dot(T, 1.0 / 3.0) * _LayerColour[l].a;
+                        if (c.x <= 0)
+                            sum += col * _LayerColour[l];
+                        else
+                        {
+                            [loop] for (int bi = 0; bi < _BinCount; bi++)
+                            {
+                                float4 ext = _BinExtinction[l * MAX_BINS + bi];
+                                sum += col * exp(-ext.x * c.x - ext.y * c.y - ext.z * c.z) * _BinColour[l * MAX_BINS + bi];
+                            }
+                        }
                         }
                     }
                 }

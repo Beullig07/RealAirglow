@@ -20,6 +20,7 @@ namespace RealAirglow.Core
         public double F107Reference = 100.0;
         public double? DefaultMaster;
         public LowerAtmosphereDef Lower = new LowerAtmosphereDef();
+        public double[] ExtinctionBinsNm = new double[0];
         public List<LayerDef> Layers = new List<LayerDef>();
     }
 
@@ -34,6 +35,7 @@ namespace RealAirglow.Core
             };
             if (node.GetValue("defaultMasterIntensity") != null)
                 b.DefaultMaster = Num(node, "defaultMasterIntensity", DisplayControls.DefaultMaster);
+            b.ExtinctionBinsNm = Vec(node, "extinctionBins_nm", -1);
             var lower = node.GetNodes("LOWER_ATMOSPHERE").FirstOrDefault();
             if (lower != null)
             {
@@ -60,10 +62,15 @@ namespace RealAirglow.Core
                     CameraRGB = Vec(n, "cameraRGB", 3),
                     CieRGB = Vec(n, "cieRGB", 3),
                     ScotopicY = Num(n, "scotopicY", 0),
-                    SigmaRayleigh = Vec(n, "sigmaRayleigh", 3),
-                    SigmaOzone = Vec(n, "sigmaOzone", 3),
-                    AerosolFactor = Vec(n, "aerosolFactor", 3),
+                    BinCameraRGB = Vec(n, "binCameraRGB", -1),
+                    BinCieRGB = Vec(n, "binCieRGB", -1),
+                    BinScotopicY = Vec(n, "binScotopicY", -1),
+                    BinExtinction = Vec(n, "binExtinction", -1),
                 });
+                var L = b.Layers[b.Layers.Count - 1];
+                int nb = Math.Max(b.ExtinctionBinsNm.Length - 1, 0);
+                if (L.BinScotopicY.Length != nb || L.BinCameraRGB.Length != 3 * nb || L.BinCieRGB.Length != 3 * nb || L.BinExtinction.Length != 3 * nb)
+                    throw new FormatException($"layer {L.Name}: extinction bin arrays do not match {nb} bins");
             }
             return b;
         }

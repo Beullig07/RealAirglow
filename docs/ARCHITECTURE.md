@@ -75,6 +75,24 @@ Decisions:
    the planet at each sample point (solar angular radius from the IAU nominal radius and 1 au).
    Phase 3 replaces this with the agreed adaptive exposure.
 
+## Shader vs reference (deliverable 5)
+
+`tools/build_shaders.sh` renders three views with the real shader and binder in the Unity editor
+(exposure 1, linear output) and compares them with the reference model on the same per-pixel
+rays (`reference/compare_shader.py`). Tolerance on pixels brighter than 1 % of the view's
+maximum: median luminance error ≤ 1 %, 95th percentile ≤ 3 %.
+
+Results on 2026-10-11 (all pass):
+
+| View | Median | p95 | Max |
+|---|---|---|---|
+| ISS limb, 200 mm, extinction on | 0.07 % | 1.27 % | 1.43 % |
+| ISS wide, 24 mm, extinction on | 0.02 % | 0.22 % | 1.43 % |
+| Ground, 20° elevation, 50° FOV, extinction on | 0.07 % | 0.85 % | 3.96 % (at the horizon) |
+
+The remaining error comes from 16-point quadrature (≤ 2 % on rays crossing a layer below its
+peak) and from the 11-bin extinction (`PHYSICS.md` §11).
+
 ## Performance (Phase 2, unoptimised)
 
 Per pixel: up to 9 layers × 2 path intervals × 16 Gauss–Legendre nodes, plus 2 × 16 nodes for

@@ -377,6 +377,7 @@ Implemented in Phase 1 (`airglow_ref/atmosphere.py`, `geometry.py`):
 | Ozone | Serdyuchenko et al. cross-sections at 223 K (5.09 × 10⁻²¹ cm² at 600 nm) on a Gaussian layer at 22 km, FWHM 15 km, 300 DU | V (σ), tuning (layer) | [Serdyuchenko2014] |
 | Aerosol | τ(550 nm) = 0.05, Ångström exponent 1.3, exponential scale height 1.2 km | tuning | |
 | Geometry | Emission behind a lower-atmosphere crossing is attenuated by the slant columns along the actual ray; near-side emission seen from orbit is not | D | |
+| In-game spectral treatment | The shader cannot carry each layer's full spectrum, so the visible range is split into 11 fixed bins (360, 420, 460, 490, 520, 545, 570, 595, 620, 650, 690, 830 nm). Each layer carries per-bin colour weights and radiance-weighted mean cross-sections, and gets one transmittance per bin. Against exact per-line transmittance (sea level, default absorbers): luminance error < 1 % down to 1° elevation (O₂ bands 3 %, negligible light), largest single-channel error ~7 % at 1° and ≤ 2 % from 5° up. A single mean cross-section per colour channel was tried first and is not good enough: up to 21 % too dark at 1° (Jensen bias on broad spectra). | D | `reference/export_ksp_config.py` |
 
 - O₂ A-band and B-band self-absorption make O₂(b) (0–0) and (1–0) invisible from the ground
   [Noll2012]. The K D2 zenith transmission is 0.0026 [Noll2025] (illustrative). The reference
