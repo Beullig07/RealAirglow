@@ -192,3 +192,14 @@ def test_sodium_g_factors():
     g2, g1 = solar.sodium_g()
     assert g2 == pytest.approx(0.507, rel=0.01)
     assert g1 == pytest.approx(0.299, rel=0.01)
+
+
+def test_outshine_weight_night_twilight_day():
+    """Local outshining: full on the night side, smooth through twilight, hidden in daylight."""
+    w = exposure.outshine_weight
+    assert w(110.0) == 1.0 and w(102.5) == 1.0
+    z = np.linspace(95.0, 102.0, 71)
+    assert np.all(np.diff(w(z)) > 0)                      # monotonic fade
+    assert 7.0e-4 < w(95.0) < 7.8e-4                      # 1.47e-3 / 1.98 cd m^-2
+    assert w(60.0) < 1e-6                                 # sunlit ground
+    assert exposure.metered_luminance(exposure.ISS_D4_LIMB) == pytest.approx(1.4724e-3, rel=1e-3)

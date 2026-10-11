@@ -330,6 +330,34 @@ the airglow over the whole planet whenever sunlit ground was in view. The owner 
 on the whole planet, day and night side, at all times. Metered exposure stays available in the
 debug window. This is a display choice; the emission model is unchanged.
 
+**Local outshining (default from 1.0.3, owner request 2026-10-11).**
+- **What the owner wanted:** the airglow outshined by the Sun, as in the first build, but
+  without that build's hard edge. The edge came from a geometric gate: the solar disc seen
+  from 97 km sets within about 0.5° of Sun zenith distance, about 55 km.
+- **How it works:** the metered exposure above is applied per emitting point instead of per
+  frame. Each quadrature node is weighted by
+  w = min(1, L_m / L_bg(ζ)).
+  - L_m = K N²/(t S) = 1.47 × 10⁻³ cd m⁻² is the luminance the ISS night preset meters.
+  - ζ is the Sun's zenith distance at that point.
+  - L_bg is the background at that place: the [Patat2006] twilight sky for ζ ≥ 95°, otherwise
+    the larger of the 95° sky and the sunlit Lambertian ground (A = 0.29, E_v = 134 634 lx).
+- **What it looks like:**
+  - w = 1 for ζ ≳ 102° (end of nautical twilight).
+  - w falls by about 10× by ζ ≈ 99°, to 7.4 × 10⁻⁴ at 95°, and to below 10⁻⁶ on sunlit
+    ground.
+  - The visible fade spans about 4–5° of ζ, roughly 500 km on the ground.
+  - The night side keeps its full brightness at any time.
+- **Combination:** it multiplies the emission, not the exposure, so it combines with either
+  exposure mode. It is on by default ("Outshined by sunlight" in the main window).
+- **Approximations:**
+  - The zenith sky stands in for the background in every view direction. From orbit, the
+    real background behind the layer is the twilit ground and lower atmosphere.
+  - Dayglow is not modelled.
+- **Verification:**
+  - Implemented in `src/Core/AutoExposure.cs` (`OutshineWeight`), in the shader (`OUTSHINE_ON`)
+    and independently in `reference/airglow_ref/exposure.py`.
+  - The harness view `iss_terminator` compares the shader with the reference with outshining on.
+
 ## 6. Local time and inter-layer lags
 
 | Item | Value | Conf. | Source |

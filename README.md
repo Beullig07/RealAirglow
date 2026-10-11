@@ -11,7 +11,7 @@ and from the ground (van Rhijn brightening toward the horizon, dimmed by extinct
 > [`docs/PHYSICS.md`](docs/PHYSICS.md). The shader is checked automatically against an
 > independent Python reference model. The author tested it in their own KSP install.
 
-**Status: 1.0.2.** The static layers and the intensity window work. Variability (gravity waves, solar cycle, tides) and further integration with
+**Status: 1.0.3.** The static layers and the intensity window work. Variability (gravity waves, solar cycle, tides) and further integration with
 Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Requirements
@@ -24,7 +24,7 @@ Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Install
 
-1. Download `RealAirglow-1.0.2.zip` from the
+1. Download `RealAirglow-1.0.3.zip` from the
    [Releases](../../releases) page.
 2. Copy its `GameData/RealAirglow` folder into your KSP `GameData` folder.
 
@@ -53,9 +53,15 @@ Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
 
 Settings are saved in `GameData/RealAirglow/PluginData/settings.cfg`.
 
-**Day and night side.** The airglow is drawn over the whole planet all the time, on both the
-day and night side, at a fixed exposure. Debug… has an auto (metered) exposure instead: it
-fades all the airglow out when sunlit Earth is in view, the way a real camera would.
+**Day and night side.** Sunlight outshines the airglow where the Sun is up.
+- On the night side the airglow is at full brightness.
+- Through twilight it fades out smoothly over about 500 km, following measured twilight sky
+  brightness.
+- On the day side it is hidden.
+- Turn off "Outshined by sunlight" in the window to show it on the whole planet.
+- The exposure is fixed, so sunlit Earth in view does not dim the night side.
+- Debug… also has an auto (metered) exposure that dims the whole frame, the way a real camera
+  would.
 
 ## Building from source
 

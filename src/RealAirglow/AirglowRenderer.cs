@@ -200,7 +200,7 @@ namespace RealAirglow
             addon.CurrentExposure = exposure;
 
             AirglowMaterialBinder.BindModel(material, addon.Model, addon.Controls.Effective, o.F107, o.Mode,
-                o.Extinction, o.NightGate, exposure, QualitySettings.activeColorSpace == ColorSpace.Gamma);
+                o.Extinction, o.Outshine, exposure, QualitySettings.activeColorSpace == ColorSpace.Gamma);
             var view = new AirglowView
             {
                 CamPosKm = posKm,

@@ -19,10 +19,9 @@ namespace RealAirglow
         public double F107 = 100.0;              // sfu, PALACE reference (owner confirmed)
         public bool Extinction = true;
         public ExposureMode Exposure = ExposureMode.Fixed;
-        // Debug only: weight emission by the fraction of the solar disc hidden by the planet at
-        // the emitting point. Not physical (nightglow does not stop at the terminator); off by
-        // default.
-        public bool NightGate = false;
+        // Sunlight outshines the airglow locally (AutoExposure.OutshineWeight): full on the night
+        // side, a smooth fade through twilight, hidden in daylight. Owner default from 1.0.3.
+        public bool Outshine = true;
         public CameraEvent LocalEvent = CameraEvent.AfterImageEffectsOpaque;   // behind-atmosphere part, before clouds
         public CameraEvent FrontEvent = CameraEvent.AfterForwardAlpha;         // in-front part, after clouds
         public CameraEvent ScaledEvent = CameraEvent.AfterForwardAlpha;
@@ -35,7 +34,7 @@ namespace RealAirglow
             d["f107"] = F107.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
             d["extinction"] = Extinction.ToString();
             d["exposure"] = Exposure.ToString();
-            d["nightGateDebug"] = NightGate.ToString();
+            d["outshine"] = Outshine.ToString();
             d["frontEvent"] = FrontEvent.ToString();
             d["localEvent"] = LocalEvent.ToString();
             d["scaledEvent"] = ScaledEvent.ToString();
@@ -51,8 +50,8 @@ namespace RealAirglow
             if (d.TryGetValue("extinction", out var e) && bool.TryParse(e, out var ev)) Extinction = ev;
             // Files from before 1.0.1 saved the old Auto default; keep the new Fixed default instead.
             if (DisplayControls.SavedVersion(d) >= 2 && d.TryGetValue("exposure", out var x) && Enum.TryParse(x, out ExposureMode xm)) Exposure = xm;
-            // "nightGateDebug" replaces the Phase 2 key "nightGate" so an old saved True is ignored.
-            if (d.TryGetValue("nightGateDebug", out var n) && bool.TryParse(n, out var nv)) NightGate = nv;
+            // The old hard-edged gate keys ("nightGate", "nightGateDebug") are no longer read.
+            if (d.TryGetValue("outshine", out var n) && bool.TryParse(n, out var nv)) Outshine = nv;
             if (d.TryGetValue("frontEvent", out var fe) && Enum.TryParse(fe, out CameraEvent fev)) FrontEvent = fev;
             if (d.TryGetValue("localEvent", out var le) && Enum.TryParse(le, out CameraEvent lev)) LocalEvent = lev;
             if (d.TryGetValue("scaledEvent", out var se) && Enum.TryParse(se, out CameraEvent sev)) ScaledEvent = sev;

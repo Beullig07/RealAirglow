@@ -146,6 +146,26 @@ namespace RealAirglow.Tests
         }
     }
 
+    public class OutshineTests
+    {
+        [Fact]
+        public void FullAtNightFadesThroughTwilightHiddenInDaylight()
+        {
+            var e = CameraExposure.IssD4;
+            Assert.Equal(1.0, AutoExposure.OutshineWeight(120, e));
+            Assert.Equal(1.0, AutoExposure.OutshineWeight(102.5, e));
+            double prev = 0;
+            for (double z = 95; z <= 102; z += 0.1)
+            {
+                double w = AutoExposure.OutshineWeight(z, e);
+                Assert.True(w > prev);
+                prev = w;
+            }
+            Assert.InRange(AutoExposure.OutshineWeight(95, e), 7.0e-4, 7.8e-4);
+            Assert.True(AutoExposure.OutshineWeight(60, e) < 1e-6);
+        }
+    }
+
     public class IntegratorTests
     {
         private const double R = 6371.0;

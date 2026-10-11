@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 
-from airglow_ref import atmosphere, colour, layers, render
+from airglow_ref import atmosphere, colour, exposure, layers, render
 from airglow_ref.constants import R_EARTH
 
 HARNESS = Path(__file__).resolve().parent / "output" / "harness"
@@ -48,7 +48,8 @@ def main():
         shader = np.fromfile(meta_path.with_suffix(".f32"), dtype=np.float32).reshape(H, W, 4)[..., :3]
         obs = np.array([R_EARTH + meta["alt_km"] * 1e3, 0.0, 0.0])
         lower = atmosphere.LowerAtmosphere() if meta["extinction"] else None
-        ref = colour.gamut_map(sum(render.render(obs, rays(meta), comps, cam, lower=lower).values()))
+        mod = exposure.outshine_modulation(meta["sun_dir"]) if meta.get("outshine") else None
+        ref = colour.gamut_map(sum(render.render(obs, rays(meta), comps, cam, lower=lower, modulation=mod).values()))
         Ys, Yr = shader @ colour.LUMA, ref @ colour.LUMA
         m = Yr > 0.01 * Yr.max()
         rel = np.abs(Ys[m] / Yr[m] - 1)

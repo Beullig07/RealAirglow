@@ -1,5 +1,16 @@
 # In-game test checklist
 
+## Retest for 1.0.3 (outshined by sunlight)
+
+1. **Terminator:** in map view or orbit with the terminator in view:
+   - the night side shows full airglow;
+   - toward the day side it fades out smoothly over a few hundred km, with no hard edge;
+   - the day side shows none.
+2. Untick "Outshined by sunlight" in the main window: the airglow covers the whole planet
+   again (the 1.0.1 look).
+3. With the sunlit half in view, the night-side airglow keeps its brightness (the exposure is
+   fixed).
+
 ## Retest for 1.0.1 (always-on airglow, new defaults)
 
 1. **Day and night side:** with the sunlit half of Earth in view (map view or orbit), the airglow

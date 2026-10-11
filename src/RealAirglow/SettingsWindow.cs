@@ -108,6 +108,9 @@ namespace RealAirglow
             GUILayout.BeginVertical();
             bool en = GUILayout.Toggle(c.Enabled, " Airglow on");
             if (en != c.Enabled) { c.Enabled = en; MarkDirty(); }
+            var o = addon.Options;
+            bool sun = GUILayout.Toggle(o.Outshine, " Outshined by sunlight (fades through twilight)");
+            if (sun != o.Outshine) { o.Outshine = sun; MarkDirty(); }
 
             double ev = DisplayControls.ExposureValue(c.MasterTarget);
             GUILayout.Label("Master intensity: " + Percent(c.MasterTarget) + " % of photographic  (" +
@@ -175,8 +178,6 @@ namespace RealAirglow
                 { o.Exposure = m; MarkDirty(); }
             GUILayout.EndHorizontal();
             GUILayout.Label($"Metered scene luminance {addon.Meter.AverageLuminance:G3} cd/m², exposure {addon.CurrentExposure / CameraExposure.IssD4.Scale * 100:G3} % of ISS night");
-            bool gate = GUILayout.Toggle(o.NightGate, " Night gate (debug, not physical)");
-            if (gate != o.NightGate) { o.NightGate = gate; MarkDirty(); }
 
             GUILayout.BeginHorizontal();
             GUILayout.Label("F10.7 (sfu)", GUILayout.Width(90));
@@ -221,7 +222,7 @@ namespace RealAirglow
                 addon.Body.Radius / 1000.0, addon.Model.Layers, addon.Options.Extinction ? addon.Model.Lower : null,
                 addon.Options.F107, addon.Model.F107Reference);
             double alt = Math.Sqrt(p.x * p.x + p.y * p.y + p.z * p.z) - addon.Body.Radius / 1000.0;
-            GUILayout.Label($"Screen centre, camera altitude {alt:F1} km (no night gate, no display scaling):");
+            GUILayout.Label($"Screen centre, camera altitude {alt:F1} km (no outshining, no display scaling):");
             double lum = 0;
             foreach (var g in DisplayControls.Groups)
             {

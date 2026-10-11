@@ -28,13 +28,18 @@ namespace RealAirglow.Editor
             public float VFovDeg;
             public int Width, Height;
             public bool Extinction;
+            public bool Outshine;
+            public double SunAngleDeg;  // Sun direction in the x-y plane, from +x (180 = midnight at the observer)
         }
 
         private static readonly ViewSpec[] Views =
         {
-            new ViewSpec { Name = "iss_limb", AltKm = 420, ElevationDeg = -16.18, VFovDeg = 6.9f, Width = 300, Height = 200, Extinction = true },
-            new ViewSpec { Name = "iss_wide", AltKm = 420, ElevationDeg = -28.8, VFovDeg = 53.1f, Width = 300, Height = 200, Extinction = true },
-            new ViewSpec { Name = "ground_horizon", AltKm = 0.001, ElevationDeg = 20.0, VFovDeg = 50.0f, Width = 300, Height = 200, Extinction = true },
+            new ViewSpec { Name = "iss_limb", AltKm = 420, ElevationDeg = -16.18, VFovDeg = 6.9f, Width = 300, Height = 200, Extinction = true, SunAngleDeg = 180 },
+            new ViewSpec { Name = "iss_wide", AltKm = 420, ElevationDeg = -28.8, VFovDeg = 53.1f, Width = 300, Height = 200, Extinction = true, SunAngleDeg = 180 },
+            new ViewSpec { Name = "ground_horizon", AltKm = 0.001, ElevationDeg = 20.0, VFovDeg = 50.0f, Width = 300, Height = 200, Extinction = true, SunAngleDeg = 180 },
+            // Looking ahead across the terminator: the limb straight ahead has the Sun ~98 deg
+            // from its zenith, the planet below the observer is in full night.
+            new ViewSpec { Name = "iss_terminator", AltKm = 420, ElevationDeg = -28.8, VFovDeg = 53.1f, Width = 300, Height = 200, Extinction = true, Outshine = true, SunAngleDeg = 118 },
         };
 
         [MenuItem("RealAirglow/Run comparison harness")]
@@ -68,14 +73,16 @@ namespace RealAirglow.Editor
                 cam.targetTexture = rt;
 
                 AirglowMaterialBinder.BindModel(material, body, g => 1.0, body.F107Reference, SpectralMode.Camera,
-                    v.Extinction, nightGate: false, exposure: 1.0, gammaSpace: false);
+                    v.Extinction, v.Outshine, exposure: 1.0, gammaSpace: false);
+                double sa = v.SunAngleDeg * Math.PI / 180;
+                var sunDir = new Vector3((float)Math.Cos(sa), (float)Math.Sin(sa), 0f);
                 var view = new AirglowView
                 {
                     CamPosKm = new Double3(RadiusKm + v.AltKm, 0, 0),
                     CamForward = go.transform.forward,
                     FrustumRays = AirglowMaterialBinder.FrustumRays(cam),
                     WorldUnitKm = 0.001f,
-                    SunDir = new Vector3(-1, 0, 0),
+                    SunDir = sunDir,
                 };
                 AirglowMaterialBinder.BindView(material, view, RadiusKm, useDepth: false);
                 var cb = new CommandBuffer { name = "RealAirglow harness" };
@@ -117,6 +124,8 @@ namespace RealAirglow.Editor
                 sb.Append(string.Join(", ", view.FrustumRays.Select(r => string.Format(CultureInfo.InvariantCulture, "[{0:R}, {1:R}, {2:R}]", r.x, r.y, r.z))));
                 sb.Append("],\n");
                 sb.AppendFormat(CultureInfo.InvariantCulture, "  \"split_error\": {0:R},\n", splitError);
+                sb.AppendFormat(CultureInfo.InvariantCulture, "  \"outshine\": {0}, \"sun_dir\": [{1:R}, {2:R}, {3:R}],\n",
+                    v.Outshine ? "true" : "false", sunDir.x, sunDir.y, sunDir.z);
                 sb.Append("  \"rows\": \"bottom_to_top\", \"channels\": \"RGBA float32\"\n}\n");
                 File.WriteAllText(Path.Combine(outDir, v.Name + ".json"), sb.ToString());
 

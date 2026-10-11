@@ -35,7 +35,6 @@ namespace RealAirglow
         public const int MaxLayers = 12;
         public const int MaxBins = 12;   // extinction wavelength bins per layer (Earth.cfg uses 11)
         // Solar angular radius at 1 AU: IAU 2015 nominal solar radius 695 700 km / 1 au.
-        public const float SunAngularRadius = (float)(695700.0 / 149597870.7);
 
         public static readonly Dictionary<string, Color> ScienceColours = new Dictionary<string, Color>
         {
@@ -53,7 +52,7 @@ namespace RealAirglow
         /// <param name="displayScale">group -> display multiplier (master x layer), from DisplayControls.Effective.</param>
         /// <param name="exposure">luminance (cd m^-2) -> fraction of saturation.</param>
         public static void BindModel(Material m, BodyAirglow body, Func<string, double> displayScale, double f107,
-            SpectralMode mode, bool extinction, bool nightGate, double exposure, bool gammaSpace)
+            SpectralMode mode, bool extinction, bool outshine, double exposure, bool gammaSpace)
         {
             int n = Math.Min(body.Layers.Count, MaxLayers);
             for (int i = 0; i < MaxLayers; i++)
@@ -93,13 +92,19 @@ namespace RealAirglow
             m.SetVector("_Aerosol", new Vector4((float)body.Lower.AerosolTau550, (float)body.Lower.AerosolScaleHeightKm, 0f, 0f));
             m.SetFloat("_Exposure", (float)exposure);
             m.SetFloat("_GammaSpace", gammaSpace ? 1f : 0f);
-            m.SetFloat("_SunAngularRadius", SunAngularRadius);
+            m.SetVector("_Outshine", new Vector4(
+                (float)AutoExposure.MeteredLuminance(CameraExposure.IssD4),
+                (float)AutoExposure.SunlitSurfaceLuminance(1.0),
+                (float)AutoExposure.MagZeroLuminance,
+                (float)(AutoExposure.TwilightZMax - AutoExposure.TwilightZMin)));
+            m.SetVector("_TwilightFit", new Vector4((float)AutoExposure.TwilightM0, (float)AutoExposure.TwilightM1,
+                (float)AutoExposure.TwilightM2, (float)AutoExposure.TwilightZMin));
 
             SetKeyword(m, "MODE_CAMERA", mode == SpectralMode.Camera);
             SetKeyword(m, "MODE_EYE", mode == SpectralMode.Eye);
             SetKeyword(m, "MODE_SCIENCE", mode == SpectralMode.Science);
             SetKeyword(m, "EXTINCTION_ON", extinction);
-            SetKeyword(m, "NIGHT_GATE_ON", nightGate);
+            SetKeyword(m, "OUTSHINE_ON", outshine);
         }
 
         public static void BindView(Material m, AirglowView v, double radiusKm, bool useDepth)

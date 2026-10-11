@@ -24,7 +24,7 @@ Shader "RealAirglow/Airglow"
             #pragma target 5.0
             #pragma multi_compile MODE_CAMERA MODE_EYE MODE_SCIENCE
             #pragma multi_compile __ EXTINCTION_ON
-            #pragma multi_compile __ NIGHT_GATE_ON
+            #pragma multi_compile __ OUTSHINE_ON
             #pragma multi_compile __ USE_DEPTH
             #include "UnityCG.cginc"
 
@@ -50,7 +50,11 @@ Shader "RealAirglow/Airglow"
             float _WorldUnitKm;         // kilometres per world unit (depth buffer conversion)
             float _RadiusKm;            // planet radius, km
             float3 _SunDir;             // unit vector, planet centre -> Sun
-            float _SunAngularRadius;    // rad
+            // Local outshining (AutoExposure.OutshineWeight): x metered night luminance cd m^-2,
+            // y sunlit-surface luminance per unit cos(Sun zenith) cd m^-2, z magnitude zero point
+            // cd m^-2, w twilight fit range deg. _TwilightFit: m0, m1, m2, start zenith deg.
+            float4 _Outshine;
+            float4 _TwilightFit;
             int _LayerCount;
             float4 _LayerShape[MAX_LAYERS];   // x peak km, y HWHM below, z HWHM above, w column scale (R / unit profile integral)
             float4 _LayerColour[MAX_LAYERS];  // rgb: linear sRGB cd m^-2 per R (mode dependent); a: scotopic cd m^-2 per R
@@ -129,14 +133,17 @@ Shader "RealAirglow/Airglow"
                 return exp(-LN2 * u * u);
             }
 
-            // Fraction of the night: 1 - visible fraction of the solar disc from point p (km).
-            float NightFraction(float3 p)
+            // How much sunlight at point p (km) outshines its airglow: night exposure / local
+            // background exposure, from the Sun's zenith distance at p (docs/PHYSICS.md §5).
+            float Outshine(float3 p)
             {
-                float rp = length(p);
-                float alpha = asin(saturate(_RadiusKm / rp));         // angular radius of the planet
-                float beta = acos(clamp(dot(-p / rp, _SunDir), -1, 1)); // Sun angle from the planet centre
-                float sunlit = saturate((beta - alpha + _SunAngularRadius) / (2 * _SunAngularRadius));
-                return 1 - sunlit;
+                float cz = clamp(dot(p, _SunDir) / length(p), -1, 1);
+                float zen = degrees(acos(cz));
+                float x = clamp(zen - _TwilightFit.w, 0, _Outshine.w);
+                float mag = _TwilightFit.x + x * (_TwilightFit.y + x * _TwilightFit.z);
+                float L = _Outshine.z * exp2(-0.4 * 3.3219281 * mag);   // 10^(-0.4 m)
+                if (zen < _TwilightFit.w) L = max(L, _Outshine.y * max(cz, 0));
+                return min(1, _Outshine.x / L);
             }
 
             float AirDensity(float z)
@@ -233,8 +240,8 @@ Shader "RealAirglow/Airglow"
                             float3 p = o + d * (mid + half_ * GL_X[q]);
                             float z = length(p) - _RadiusKm;
                             float w = Profile(z, shape) * GL_W[q];
-                        #if defined(NIGHT_GATE_ON)
-                            w *= NightFraction(p);
+                        #if defined(OUTSHINE_ON)
+                            w *= Outshine(p);
                         #endif
                             col += w;
                         }

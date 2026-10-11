@@ -77,16 +77,19 @@ Decisions:
    the CPU (`Vector3d`), from the local camera or from scaled space × `ScaledSpace.ScaleFactor`,
    then passed in km. The shader intersects spheres about the point of closest approach, which
    is stable at grazing incidence.
-5. **Day/night: fixed exposure by default (1.0.1).** No cut on the emission. The airglow shows
-   over the whole planet, day and night side, at the ISS night exposure.
-   - The owner chose this after seeing the metered mode in game.
+5. **Day/night: local outshining (1.0.3) with a fixed exposure (1.0.1).**
+   - Sunlight outshines the airglow per emitting point (`PHYSICS.md` §5): full on the night side,
+     a smooth fade through twilight, hidden in daylight. The owner asked for "outshined by sun
+     like the first time" without the first build's hard edge. It is the `outshine` setting,
+     on by default.
+   - The exposure itself stays fixed at the ISS night value, so a sunlit area in view no longer
+     dims the night side. The owner chose this after seeing the metered mode in game.
    - The metered exposure (an averaging meter over a 16 × 9 grid of view rays, `PHYSICS.md` §5)
      remains in the debug window.
    - Saved settings from before 1.0.1 have no `version` key, and their `exposure` value is
      ignored. A red-layer value saved before 1.0.2 (`version` < 3) is also ignored, so the new
      defaults apply.
-   The Phase 2 geometric night gate remains as a debug toggle, off by default. Its saved key
-   was renamed so an old `nightGate = True` is ignored.
+   - The Phase 2 geometric night gate was removed in 1.0.3; its saved keys are ignored.
 
 ## Shader vs reference (deliverable 5)
 
@@ -101,6 +104,7 @@ Results on 2026-10-11 (all pass):
 |---|---|---|---|
 | ISS limb, 200 mm, extinction on | 0.07 % | 1.27 % | 1.43 % |
 | ISS wide, 24 mm, extinction on | 0.02 % | 0.22 % | 1.43 % |
+| ISS wide across the terminator, outshining on (1.0.3) | 0.02 % | 0.71 % | 2.67 % |
 | Ground, 20° elevation, 50° FOV, extinction on | 0.07 % | 0.85 % | 3.96 % (at the horizon) |
 
 The remaining error comes from 16-point quadrature (≤ 2 % on rays crossing a layer below its

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.3 (2026-10-11)
+
+### Changed
+- Sunlight outshines the airglow again, as in the first build, but without the hard edge:
+  - full brightness on the night side;
+  - a smooth fade through twilight over about 500 km, following measured twilight sky
+    brightness (Patat et al. 2006);
+  - hidden on the day side.
+  It works per location, so sunlit Earth in view does not dim the night side. Toggle:
+  "Outshined by sunlight" in the main window, on by default.
+- The old hard-edged night gate (debug option) is removed.
+- The comparison harness has a new terminator view checking the fade against the reference
+  model.
+
 ## 1.0.2 (2026-10-11)
 
 ### Changed
