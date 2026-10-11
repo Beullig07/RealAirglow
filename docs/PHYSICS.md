@@ -1,6 +1,6 @@
 # RealAirglow physics reference
 
-Status: **Phase 0 (research)**, 2026-10-11. This file is the single source of truth for
+Status: **Phase 1 (reference model)**, 2026-10-11. This file is the single source of truth for
 every physical number the reference model and the shader use. Each value carries a
 source key (see [Bibliography](#bibliography)). When the code needs a value that is
 not here, add it here first, with a citation or a "tuning parameter" label.
@@ -121,7 +121,7 @@ low-latitude site. That matters most for the red line (§4.7).
 | Mechanism | H + O₃ → OH*(v ≤ 9) + O₂ (Bates–Nicolet). Populations are then redistributed by radiative and collisional cascades. | | V | [Noll2025] §4.1 |
 | Peak height | 86.8 km | ± 2.6 km (34 rocket flights). Effective height depends on v and N: line-dependent effective heights of 86–94 km. Peak altitude 84–90 km, mean 87 km (SABER, midnight) | V | [Baker1988] via [Wust2022]; [Noll2025] §6.1; [Xu2010] ¶11 |
 | Thickness | FWHM 8.6 km | ± 3.1 km | V | [Baker1988] via [Wust2022] |
-| Shape | Asymmetric: wider top, narrower bottom | asymmetric Gaussian | V (qual.) | [Wust2022] (Moreels 1977; Khomich 2008) |
+| Shape | Asymmetric: wider top, narrower bottom | asymmetric Gaussian. No quantitative asymmetry found, so the model uses a symmetric profile (asymmetry parameter 1.0, **Open**). | V (qual.) | [Wust2022] (Moreels 1977; Khomich 2008) |
 | Height vs vibrational level | adjacent v differ by ~0.4–0.7 km | up to ~4 km between OH(3-1) and OH(8-3) | V / S | [Wust2022]; von Savigny 2012 (S) |
 | Total emission | 715 kR (0.3–2.5 µm, no extinction) | 4.5 MR all bands incl. Δv = 1 [Leinert1998] | V | [Noll2025] §4.1 |
 | Visible-relevant | 3.1 kR between 642 and 858 nm. Bands with Δv = 6 near 520–630 nm are much weaker, e.g. (9-3) and (8-2). | | V | [Noll2025] §4.1 |
@@ -143,11 +143,25 @@ low-latitude site. That matters most for the red line (§4.7).
 Na column along the line of sight that lies above the Earth's shadow (plus a screening
 height), and g is the resonance-scattering g-factor (photons s⁻¹ atom⁻¹) for D2 and D1. g
 depends strongly on the residual intensity in the cores of the solar Fraunhofer D lines, so
-it must be computed from a high-resolution solar spectrum. **Open**: we have not found a
-citable Earth-orbit g value. A dayglow measurement implies g ≈ 0.75 s⁻¹ for D1 + D2, but that
-is our arithmetic on a contested measurement. Phase 1 will compute g from a solar flux atlas
-(TSIS-1 HSRS) with f(D2) = 0.641 and f(D1) = 0.320 (NIST), using the method of
-[Killen2022], and record the result here.
+it must be computed from a high-resolution solar spectrum.
+
+Computed in Phase 1 (`airglow_ref/solar.py`, conf. D): g = π r_e c · f · Φ_ν, with Φ_ν the
+solar photon flux per Hz at the rest wavelength from TSIS-1 HSRS v2 [TSIS-HSRS] (0.001 nm
+sampling; residual core intensity 4.7 % at D2, 5.5 % at D1). NIST ASD: D2 589.1583 nm
+(vacuum) f = 0.641; D1 589.7558 nm f = 0.320.
+
+| Line | g at 1 AU (s⁻¹) |
+|---|---|
+| D2 | 0.507 |
+| D1 | 0.299 |
+| Sum | 0.807 |
+
+A fully sunlit mean column (3.92 × 10¹³ m⁻² [Yuan2019]) then gives **3.2 kR** at zenith,
+about 85× the Na nightglow, with D2/D1 = 1.69. This agrees with the ~0.75 s⁻¹ implied by
+an old dayglow measurement. Not modelled yet: the ±3.3 % annual change in solar distance,
+the Doppler shift from Earth's radial velocity (±0.5 km s⁻¹, about ±1 pm, inside the flat
+line core) and the D2 polarisation phase function. The day/night machinery that uses the
+term is Phase 3.
 
 ### 4.3 O₂ atmospheric band (b¹Σg⁺ – X³Σg⁻)
 
@@ -155,7 +169,7 @@ is our arithmetic on a contested measurement. Phase 1 will compute g from a sola
 |---|---|---|---|---|
 | Mechanism | O + O + M → O₂* + M; collisional transfer to b¹Σg⁺ | Kalogerakis 2019 suggests an additional O(¹D) path | V | [Noll2025] §4.2 |
 | Peak height | 94 km | [Yee1997]. OSIRIS 762 nm nightglow peak near 95 km. 89 km for a–X (1.27 µm, irrelevant here) | V / S | [Noll2025]; [Parihar2013]; Wang 2021 (S) |
-| Width | not found | **Open**: derive in Phase 1 (§4.9) | Open | |
+| Width | FWHM 9.85 km (HWHM 4.56 km below, 5.29 km above) | 8.1–10.9 km across season and latitude | D | §4.9 |
 | (0–0) 762 nm | 6.5 kR without self-absorption | Strongly absorbed by O₂ below; invisible from the ground | V | [Noll2025] |
 | (0–1) 864.5 nm | 340 R | ESO model 320 R (129 sfu); [Leinert1998] 1 kR | V | [Noll2025] |
 | Spectrum | PALACE line list | | V | [PALACE-data] |
@@ -169,9 +183,10 @@ structure of gravity waves.
 | Parameter | Value | Range / notes | Conf. | Source |
 |---|---|---|---|---|
 | Mechanism | Barth two-step: O + O + M → O₂* + M; O₂* + O → O₂ + O(¹S); O(¹S) → O(¹D) + hν(557.7 nm) | | V | [Noll2025] §4.5; [Das2011] |
-| VER parameterisation | McDade et al. 1986 cubic equation, extended for O(¹S) quenching: k₁ = 4.7 × 10⁻³³ (300/T)² cm⁶ s⁻¹, A₅₅₈ = 1.16 s⁻¹, A(¹S) = 1.228 s⁻¹, C(0) = 13, C(1) = 224, C(2) = 17 (best estimates; ± bounds in source) | [Gao2012] uses A₅₅₈ = 1.26, A(¹S) = 1.34 s⁻¹ | V | [Lednytskyy2015] Table 2, Eq. 15; [Gao2012] Eq. 1 |
+| VER parameterisation (used) | McDade et al. 1986: V = A₅ k₁[O]³([N₂]+[O₂]) / ((A₆ + k₅[O₂])(C′[O₂] + C″[O])), with A₅ = 1.18 s⁻¹, A₆ = 1.35 s⁻¹, k₁ = 4.7 × 10⁻³³ (300/T)² cm⁶ s⁻¹, k₅ = 4.0 × 10⁻¹² exp(−865/T) cm³ s⁻¹, C′ = 15, C″ = 211 | McDade's constants as given in NCAR glbmean `mkemiss.F` [NCAR-glbmean]. They agree with [Lednytskyy2015] Table 2, which says McDade 1986 used A₅₅₈ = 1.18 and A(¹S) = 1.35 s⁻¹, with C values in its ranges. | V | [NCAR-glbmean]; [Lednytskyy2015] |
+| Extended form (not used) | [Lednytskyy2015] Eq. 15 adds O(¹S) quenching by O and N₂ and a third fit constant C(0) = 13. As extracted, the C(0) term is dimensionally ambiguous, so it is not used. NIST A values: A(557.7) = 1.26 s⁻¹, A(¹S) total = 1.336 s⁻¹. | | V | [Lednytskyy2015]; NIST ASD |
 | Peak height | 97 km (reference) | 95 km mid-latitudes (Nov 2008); ~92 km at 10–20°N (May 2008); 92–96 km; long-term range 84–104 km. Equatorial layer weaker and higher than mid-latitude. | V | [Noll2025]; [Noll2012]; [Gao2012] |
-| Width | not found as a clean statistic | **Open**: derive in Phase 1 (§4.9) | Open | |
+| Width | FWHM 8.84 km (HWHM 4.29 km below, 4.55 km above) | 7.0–10.3 km across season and latitude | D | §4.9 |
 | Intensity | 163 R at 100 sfu | Typical 250 R; 40–750 R around a 230 R mean (Paranal, FORS1); 153 R ESO model at 100 sfu | V | [Noll2025]; [Leinert1998]; [Patat2008] |
 | Contribution to V-band sky | ~20 % | | V | [Patat2008] |
 
@@ -182,6 +197,18 @@ structure of gravity waves.
 | FeO-like (FeO "orange arc" bands + other species, possibly NiO or OFeOH) | centroid 88 km (WACCM) | 2.8 kR integrated 0.3–2.0 µm. Spectral shape from the PALACE continuum file. | V | [Noll2025] §5.2 |
 | NO₂ air afterglow (NO + O → NO₂ + hν) | 103 ± 2 km at low latitude (STS-37). Satellites usually report 90–95 km, rockets 98–110 km. | ≤ 5 % of the 600 nm pseudo-continuum at low latitudes | S | [Mende1993, S]; [Evans2010, S] |
 | Older aggregate values | "90 km" | 0.3 R Å⁻¹ = 3 R nm⁻¹ (400–700 nm) [Leinert1998]; 4.27 R nm⁻¹ at 543 nm with tabulated spectral shape [Noll2012] Table 3 | V | |
+
+Model choices (tuning parameters, conf. D): the FeO-like layer uses the Na layer width
+(HWHM 5.44 km) because both come from metal-atom chemistry; no FeO width was found. The NO₂
+layer uses HWHM 2.5 km and, lacking a spectrum, the FeO-like spectral shape, at the 5 %
+upper limit.
+
+Of the PALACE continuum file's 2.78 kR, 1.03 kR falls between 380 and 780 nm, peaking at
+597 nm. Its luminance is 2.25 × 10⁻⁸ cd m⁻² per rayleigh of component, i.e. 6.2 × 10⁻⁵ cd m⁻²
+at zenith. That is about **2.6× the green line**, so the continuum is the brightest visible
+component in photopic terms. It sits ~9 km below the green layer, which is why the
+renderings show an orange-yellow band under the green one. This matches the yellowish lower
+fringe often seen in ISS photographs, but is a model result to check against photos.
 
 ### 4.6 OI 557.7 nm, F region
 
@@ -198,8 +225,9 @@ structure of gravity waves.
 |---|---|---|---|---|
 | Mechanism | O⁺ + O₂ → O₂⁺ + O; O₂⁺ + e⁻ → O + O(¹D). O(¹D) lifetime ~110 s, so the line is quenched in the mesopause and confined to the thermosphere. | | V | [Noll2025] §4.5; [Wiens2004] |
 | Peak height | ~250 km | 200–300 km; 270 km [Noll2012]; 280 km [Wiens2004]; ISUAL limb 220–280 km (S) | V | [Noll2025] |
-| Width | not found | **Open**: derive from the chemistry in Phase 1 (§4.9) | Open | |
+| Width | FWHM 76.8 km (HWHM 34.5 km below, 42.3 km above) | 72.6–77 km across season and latitude | D | §4.9 |
 | Intensity, mid-latitude typical | 630.0: 60 R; 636.4: 20 R | | V | [Leinert1998] |
+| Model default | 80 R for 630.0 + 636.4 (+ N I 520 scaled with them), split in the PALACE line ratios; equatorial arcs come in Phase 3 | | D | |
 | Intensity, Paranal (EIA-adjacent) | 630.0: 123 R; 636.4: 41 R; 639.2: 0.019 R (164 R total at 100 sfu) | Patat: mean 150 R, 10–950 R, < 80 R in > 50 % of nights | V | [Noll2025]; [Patat2008] |
 | 630/636 ratio | 2.99 measured; NIST A ratio 3.09 | Patat uses 3 | V | [Noll2025] |
 | Intertropical arcs | Column emission rate < 25 R to > 800 R (OGO-4, ~21:30 LT) | | V | [Chandra1972] |
@@ -215,22 +243,43 @@ K D 766.5/769.9 nm (2.5 R; D2 absorbed by O₂), H Balmer (geocoronal fluorescen
 layer), O₂ Herzberg bands (UV), HO₂ continuum (near-IR) [Noll2025]. All are invisible or
 negligible in camera and eye modes. They can be added later in science mode.
 
-### 4.9 Layer widths: plan for the open items
+### 4.9 Layer shapes from formation chemistry (Phase 1)
 
-No clean published FWHM statistic was found for the O₂ b, 557.7, FeO and 630 nm layers. The
-brief asks for profiles driven by formation mechanisms. So in Phase 1 the reference model will:
+No clean published FWHM statistic was found for the O₂ b, 557.7 and 630 nm layers, so their
+shapes are derived from the formation chemistry (`airglow_ref/chemistry.py`, conf. D) and
+then fitted with the parametric profile the shader uses.
 
-1. Take T, [O], [O₂], [N₂] from NRLMSIS 2.x (licence to be checked before use).
-2. Compute the 557.7 nm VER with the McDade/Lednyts'kyy equation (§4.4) and the O₂(b) VER
-   with the matching McDade parameterisation (constants to be verified and recorded here).
-   Compute the 630 nm VER from O⁺/O₂⁺ chemistry with quenching by N₂, O₂ and O (rate
-   constants to be verified and recorded here).
-3. Fit the in-game parametric profiles (asymmetric Gaussian or Chapman) to those VERs.
-4. Check them against §3.2 (limb ratio), the observed peak heights above and the Gemini
-   bound.
+Inputs: T, [O], [O₂], [N₂] from NRLMSIS 2.1 [MSIS21]. Rate constants:
 
-Until then the reference model uses placeholder FWHMs, labelled as tuning parameters:
-557.7 nm 10 km, O₂(b) 10 km, FeO 10 km, NO₂ 5 km, 630 nm 100 km.
+- **557.7 nm**: McDade et al. 1986, §4.4.
+- **O₂ b–X (0–0)**: V = A₁ k₁[O]²([N₂]+[O₂])[O₂] / ((A₂ + k₂ₐ[O₂] + k₂b[N₂] + k₂c[O])(D′[O₂] + D″[O])), with A₁ = 0.079 s⁻¹, A₂ = 0.083 s⁻¹, k₂ₐ = 4.0 × 10⁻¹⁷, k₂b = 2.2 × 10⁻¹⁵, k₂c = 8.0 × 10⁻¹⁴ cm³ s⁻¹, D′ = 6.6, D″ = 19 (McDade, as given in [NCAR-glbmean]). The (0–1) band shares the upper state, so it has the same shape.
+- **630.0 nm**: VER ∝ n_e [O₂] · A₆₃₀ / (A(¹D) + k_N₂[N₂] + k_O₂[O₂] + k_O[O]), assuming [O⁺] ≈ n_e and O₂⁺ in photochemical equilibrium.
+  - k_N₂ = 2.0 × 10⁻¹¹ exp(107.8/T) and k_O₂ = 2.9 × 10⁻¹¹ exp(67.5/T) (Streit et al. 1976); k_O = 8.0 × 10⁻¹² cm³ s⁻¹ (all as used in [NCAR-glbmean]).
+  - NIST ASD: A₆₃₀ = 5.651 × 10⁻³ s⁻¹; A(¹D) total = 7.475 × 10⁻³ s⁻¹ (630.0 + 636.4 + 639.2 nm), i.e. a 134 s lifetime.
+  - n_e is a Chapman-α layer with the atomic-oxygen scale height kT/(m_O g) at hmF2. hmF2 is solved so the VER peaks at the 250 km reference.
+  - The O⁺ + O₂ rate and n_e scale only the magnitude, which comes from the climatology anyway.
+
+Results for equinox midnight at 40°N, F10.7 = 100, Ap = 7 (the default shapes):
+
+| Layer | Chemistry peak | HWHM below / above | FWHM | Fit L1 error | Reference peak used |
+|---|---|---|---|---|---|
+| OI 557.7 | 94.9 km | 4.29 / 4.55 km | 8.84 km | 4.4 % | 97 km |
+| O₂ b | 92.6 km | 4.56 / 5.29 km | 9.85 km | 4.7 % | 94 km |
+| OI 630 | 250 km (imposed) | 34.5 / 42.3 km | 76.8 km | 6.3 % | 250 km |
+
+Variation across conditions (MSIS, midnight):
+
+| Case | 557.7 peak / FWHM | O₂ b peak / FWHM | 630 FWHM |
+|---|---|---|---|
+| 40°N, June solstice | 94.7 / 6.95 km | 92.8 / 8.10 km | 74.6 km |
+| 40°N, Dec solstice | 94.0 / 10.3 km | 91.2 / 10.9 km | 72.6 km |
+| Equator, March equinox | 95.5 / 8.23 km | 93.6 / 9.08 km | 75.2 km |
+| 20°N, Sept equinox | 95.1 / 8.02 km | 93.2 / 9.05 km | 74.2 km |
+
+Checks and choices:
+- **Layer order and spacing:** OH (87, observed) < O₂ < green, with O₂ about 2.4 km below green. The chemistry puts both layers about 2 km below the literature peaks, so the model keeps the literature peak heights and takes only width and asymmetry from the chemistry.
+- **F-layer check:** the 630 nm layer peaks at 250 km for hmF2 = 305 km and H = 46 km. The resulting hmF2 − red peak ≈ 55 km independently matches the ~50 km offset in [Noll2025] (from Makela 2001).
+- **Red-layer shape:** the asymmetric-Gaussian fit has a shorter upper tail than the chemistry (column centroid 255 vs 259 km). This is acceptable for now; revisit if the limb above 300 km looks wrong against photos.
 
 ## 5. Day, night and twilight
 
@@ -242,13 +291,13 @@ Until then the reference model uses placeholder FWHMs, labelled as tuning parame
 | Dayglow intensities | **Open**: not yet sourced. Candidates: Zhang & Shepherd 2005 (557.7 nm), WINDII 630 nm model (JGR 2021, e2020JA028715). | Open | |
 | Na twilight resonance | §4.2 | Open (g) | |
 
-**Proposal for physically fading in daylight.** Do not hard-cut the emission. In daylight the
-airglow is present but invisible because a camera or eye adapted to daylight is about 10⁵–10⁶×
-less sensitive. The display exposure applied to airglow will follow an adaptation model:
-exposure ∝ 1 / L_adapt, with L_adapt estimated from the scene (sun elevation at the camera,
-sunlit fraction of view). Night presets then cannot make dayside airglow glow. This is a
-design proposal for Phase 3 and needs the owner's agreement. It does not affect the
-physical radiance.
+**Fading in daylight (agreed with the owner 2026-10-11).** Do not hard-cut the emission. In
+daylight the airglow is present but invisible because a camera or eye adapted to daylight is
+about 10⁵–10⁶× less sensitive. The display exposure applied to airglow follows an adaptation
+model: exposure ∝ 1 / L_adapt, with L_adapt estimated from the scene (sun elevation at the
+camera, sunlit fraction of view). Night presets then cannot make dayside airglow glow. The
+adaptation model and its constants are designed in Phase 3 and documented here. It does not
+affect the physical radiance.
 
 ## 6. Local time and inter-layer lags
 
@@ -291,7 +340,8 @@ F10.7 in sfu and m_SCE the relative change per 100 sfu.
 
 Data coverage: X-shooter 27-day means 67–166 sfu [Noll2025]; ESO model data 95–228 sfu
 [Noll2012]. The UI should warn outside ~65–230 sfu. Default S = 100 sfu, the PALACE
-reference (a tuning choice; can be set to current conditions).
+reference (a tuning choice; can be set to current conditions). Owner confirmed the 100 sfu
+default on 2026-10-11.
 
 ## 9. Gravity waves
 
@@ -319,19 +369,44 @@ reference (a tuning choice; can be set to current conditions).
 
 ## 11. Lower-atmosphere transmission (ground view)
 
-Requirements, values to be pinned in Phase 1:
+Implemented in Phase 1 (`airglow_ref/atmosphere.py`, `geometry.py`):
 
-- Rayleigh optical depth by wavelength (formula and source to be chosen and recorded; Bucholtz
-  1995 is the candidate). Ozone Chappuis band cross-sections (source and licence to be
-  checked). Aerosol optical depth as a parameter.
+| Term | Model | Conf. | Source |
+|---|---|---|---|
+| Rayleigh | σ(λ) = (1.0455996 − 341.29061 λ⁻² − 0.90230850 λ²) / (1 + 0.0027059889 λ⁻² − 85.968563 λ²) × 10⁻²⁸ cm², λ in µm (dry air, 360 ppm CO₂; < 0.01 % error 250–850 nm), times the MSIS air column along the path. Check: vertical τ(550 nm) from the MSIS column = 0.0973 ± 3 % (test). | V | [Bodhaine1999] Eq. 29, Table 3 |
+| Ozone | Serdyuchenko et al. cross-sections at 223 K (5.09 × 10⁻²¹ cm² at 600 nm) on a Gaussian layer at 22 km, FWHM 15 km, 300 DU | V (σ), tuning (layer) | [Serdyuchenko2014] |
+| Aerosol | τ(550 nm) = 0.05, Ångström exponent 1.3, exponential scale height 1.2 km | tuning | |
+| Geometry | Emission behind a lower-atmosphere crossing is attenuated by the slant columns along the actual ray; near-side emission seen from orbit is not | D | |
+
 - O₂ A-band and B-band self-absorption make O₂(b) (0–0) and (1–0) invisible from the ground
-  [Noll2012]. The K D2 zenith transmission is 0.0026 [Noll2025] (illustrative).
+  [Noll2012]. The K D2 zenith transmission is 0.0026 [Noll2025] (illustrative). The reference
+  model does not yet include O₂ line absorption, which only affects the O₂ and K bands.
 - [Noll2012]: airglow extinction is weak at typical observing zenith angles. Their fitted
   τ₀ = 0.27 (Rayleigh) is a parameterisation for their reduction factor, not a measured
   optical depth to reuse.
-- Scattered airglow (light scattered into the line of sight from the whole emitting sky) is a
-  real term near the horizon [Leinert1998] §6.2. Phase 1 will estimate its size in single
-  scattering before deciding whether the shader needs it.
+- Direct airglow with extinction, sea-level observer (camera luminance, relative to zenith
+  without extinction) peaks at about 2× near z = 75–78° and falls to 0 at the horizon.
+  [Leinert1998] §6.2 says "a factor of about four" may be expected around z ≈ 80°; that figure
+  is a 1950s prediction and probably assumes a cleaner, higher site. Not resolved; see the
+  scattering term below.
+
+**Scattered airglow** (estimate, `airglow_ref/scattering.py`, conf. D). Single scattering,
+Rayleigh plus aerosol (Henyey–Greenstein g = 0.7, tuning), black ground, sea level, with the
+default absorbers. Values are relative to the zenith radiance above the atmosphere:
+
+| Zenith angle | Green direct | Green scattered | Red direct | Red scattered |
+|---|---|---|---|---|
+| 0° | 0.84 | 0.11 | 0.88 | 0.08 |
+| 60° | 1.37 | 0.24 | 1.41 | 0.17 |
+| 75° | 1.71 | 0.39 | 1.69 | 0.28 |
+| 80° | 1.61 | 0.49 | 1.57 | 0.37 |
+| 85° | 0.93 | 0.64 | 0.99 | 0.52 |
+| 88° | 0.21 | 0.71 | 0.32 | 0.65 |
+
+So scattered airglow adds ~10–15 % everywhere, ~30 % at 80°, and dominates within ~5° of the
+horizon. The ground-view shader therefore needs it; it depends only on view zenith angle and
+observer height for a horizontally uniform layer, so a small LUT will do (design in Phase 2/4).
+Multiple scattering and ground albedo would add more and are not estimated yet.
 
 ## 12. Colour, spectral response and exposure
 
@@ -340,10 +415,14 @@ Requirements, values to be pinned in Phase 1:
 - CIE 1931 2° colour-matching functions and the photopic and scotopic luminous efficiency
   tables come from CIE datasets, **licensed CC BY-SA 4.0** (checked in the dataset metadata)
   [CIE-CMF], [CIE-V].
-- Pipeline: line or band spectrum → XYZ → linear sRGB (Rec. 709 primaries, D65). Monochromatic
-  557.7, 589 and 630 nm are outside the sRGB gamut. The out-of-gamut method is chosen in
-  Phase 1 and documented here, for example luminance-preserving desaturation toward the
-  white point. It must never clip luminance.
+- Pipeline: line or band spectrum (photons) → spectral radiance (E = hc/λ) → XYZ with
+  K_m = 683 lm W⁻¹, so Y is luminance in cd m⁻² → linear sRGB. The RGB↔XYZ matrices are
+  derived from the Rec. 709 primaries and the D65 white point (IEC 61966-2-1).
+- Out of gamut (monochromatic 557.7, 589 and 630 nm all are): mix toward the white of the same
+  luminance by the smallest amount that removes negative channels. Luminance is preserved
+  exactly and nothing is clipped from above (test).
+- PALACE wavelengths are vacuum; the CIE tables are used as-is (air/vacuum differ by
+  ~0.16 nm, a < 0.1 % effect).
 
 ### 12.2 Spectral response modes
 
@@ -354,24 +433,43 @@ Requirements, values to be pinned in Phase 1:
    the Gateway metadata, exposure from the EO caption). Measured spectral sensitivities exist
    for the Nikon D3 and D700 (stock, with IR-cut) in [Jiang2013], **licence CC BY-NC-SA 4.0**
    (checked on the Zenodo record). No measured D5 or Z9 curves were found.
+   Implemented with the Nikon D3 curves (400–720 nm, the closest relative of the ISS D3S).
+   Camera RGB → XYZ uses a 3×3 matrix fitted by least squares to the CIE 1931 functions
+   over 400–720 nm (maximum-ignorance colour correction), so camera "luminance" is in
+   cd m⁻² as far as the camera meets the Luther condition. Result: the camera reports
+   557.7 nm at 0.75× its true luminance and 630 nm at 1.18×.
 2. **Human eye.** Computed luminances (§2, §3.2): green limb from orbit ≈ 163–250 R × ~56 ≈
    9–14 kR, i.e. ≈ 1.8–2.7 × 10⁻³ cd m⁻² photopic and about the same scotopic. That is below
    the CIE 191:2010 mesopic lower bound of 0.005 cd m⁻², i.e. in the scotopic (rod) regime
    [CIE191]. So the model predicts the green band is seen as a faint, nearly colourless glow.
    The red layer (~1–3 kR on the limb) is ≈ 5 × 10⁻⁵ to 1.4 × 10⁻⁴ cd m⁻² photopic and
-   ~10⁻⁶ scotopic, so effectively invisible. Implementation candidate: rod/cone model of
-   [Kirk2011], with the CIE 191 range as the regime check. No first-hand astronaut description
-   of the naked-eye appearance was found.
+   ~10⁻⁶ scotopic, so effectively invisible. No first-hand astronaut description of the
+   naked-eye appearance was found.
+   Implemented: luminance from the CIE 191 mesopic system, with the adaptation coefficient m
+   from the fixed-point iteration m = 0.7670 + 0.3334 log₁₀ L_mes, m₀ = 0.5, clamped to
+   [0, 1], and L_mes = (m L_p + (1 − m) V′(λ₀) L_s) / (m + (1 − m) V′(λ₀)) with
+   V′(λ₀) = 683/1700 [CIE191] as reproduced by [Gao2017]. Colour: the photopic chromaticity
+   mixed toward white by (1 − m). That desaturation rule is our approximation, not CIE 191;
+   [Kirk2011] remains the candidate for a fuller rod/cone model. On the 200 mm limb render
+   the maximum m is 0.05, so the eye view is essentially grey and the red layer disappears.
 3. **Science.** Each emission in its own false-colour channel, linear.
 
 ### 12.3 Exposure
 
-- Display exposure for airglow follows the standard camera equation:
-  `H = (π/4) · L_v · t / N²` (lx s, ignoring lens transmission and vignetting), with
-  saturation-based ISO speed `H_sat = 78 / S_ISO` (ISO 12232). Phase 1 pins both relations to
-  the standard text before they are used. The "Realistic photographic" preset (master 100 %)
-  is defined from a documented ISS exposure, e.g. the D4 example above, once its EXIF is
-  confirmed.
+- Display exposure for airglow follows the camera equation `H = q L t / N²` (lx s) with
+  q = (π/4) T v cos⁴θ = 0.65 (ISO 12232:1998 typical value), and saturation-based speed
+  `S = 78 lx s / H_sat` (ISO 12232:2006). Both are read from a secondary summary of the
+  standards (conf. S); the standards themselves are paywalled. Pixel value 1.0 = saturation.
+- "Realistic photographic" preset (master 100 %): Nikon D4, 1.3 s, f/1.4, ISO 12800, i.e.
+  0.0141 cd m⁻² saturates. **Confirmed from the EXIF** of ISS047-E-1114 (2016-03-02
+  20:44:08 GMT, 28 mm, manual exposure, auto white balance), an Expedition 47 limb photo.
+- The Earth Observatory reference ISS072-E-896652 has, per its EXIF, 30 s at f/1.4 and
+  ISO 500 (Nikon Z9, 24 mm). Its caption says "five-second exposure", which the EXIF
+  contradicts. Its exposure scale (fraction of saturation per cd m⁻², q t S / (78 N²)) is
+  63.8, within 10 % of the D4 frame's 70.7, so two independent ISS night photographs used
+  nearly the same effective exposure.
+- The ground all-sky render uses an illustrative 20 s, f/2.8, ISO 6400 exposure, not tied to
+  any photograph.
 - Owner default: master 30 % = log₂ 0.3 = **−1.74 EV**.
 
 ## 13. Disagreements between sources and choices made
@@ -383,7 +481,7 @@ Requirements, values to be pinned in Phase 1:
 | Green peak | 90 km [Leinert1998], 92–96 km [Gao2012], 97 km [Noll2012, Noll2025] | 97 km reference, latitude/season variation per [Gao2012] | Reference height consistent with the intensity reference |
 | Red peak | 250 [Noll2025], 270 [Noll2012], 280 [Wiens2004] | 250 km reference, driven by hmF2 in Phase 3 | Varies with the ionosphere anyway |
 | Solar coefficients | see §8 | [Noll2025] defaults, ranges exposed | Same dataset as the reference intensities |
-| McDade constants | A₅₅₈ 1.16 vs 1.26 s⁻¹ etc. | [Lednytskyy2015] best estimates | Explicit table with error bounds |
+| McDade constants | McDade 1986 set (A₅₅₈ 1.18 s⁻¹) vs [Lednytskyy2015] extended set (1.16) vs NIST (1.26) | McDade 1986 set | The C′/C″ fit constants were derived with it; only the shape is used, so the A values hardly matter |
 | Limb ratio | 35× (Gemini) vs 47–56× geometry | Geometry from profiles; 35× as lower bound | Gemini values are resolution-limited |
 | Continuum origin | NO₂ ([Noll2012], [Gill2020], brief) vs FeO-like ([Noll2025], [Evans2010]) | FeO-like dominant, NO₂ minor separate layer | Newest decomposition with WACCM support. [Mende1993] still shows a 103 km NO₂ layer. |
 
@@ -392,10 +490,16 @@ Requirements, values to be pinned in Phase 1:
 | Data | Licence | Planned use |
 |---|---|---|
 | PALACE model data (line list, continuum, variability) [PALACE-data] | CC BY 4.0 (data); code is GPL-3.0 | Offline in the reference model, with attribution. Code is not copied. |
-| CIE CMFs, V(λ), V′(λ) | CC BY-SA 4.0 | Offline; question for the owner whether derived coefficients or raw tables go in the repo |
-| Jiang 2013 camera sensitivities | CC BY-NC-SA 4.0 | Question for the owner before use |
-| IGRF-14 coefficients | to be checked | Offline bake of dip latitude |
-| NRLMSIS 2.x | to be checked | Offline layer-shape derivation |
+| CIE CMFs, V(λ), V′(λ) | CC BY-SA 4.0 | Downloaded at run time into the uncommitted cache; only derived coefficients are committed, with attribution |
+| Jiang 2013 camera sensitivities | CC BY-NC-SA 4.0 | Same: run-time download, derived coefficients committed with attribution |
+| NRLMSIS 2.1 (via pymsis, MIT wrapper) | MSIS2 code: free, not for commercial use without contacting NRL | Offline layer-shape derivation only |
+| TSIS-1 HSRS v2 | NASA/LASP public data; no licence text in the file | Run-time download, offline g-factor |
+| Serdyuchenko O₃ cross-sections (IUP Bremen) | no licence text on the page | Run-time download, offline extinction |
+| IGRF-14 coefficients | to be checked | Offline bake of dip latitude (Phase 3) |
+
+Owner decision 2026-10-11: raw third-party tables are fetched at run time into
+`reference/data/cache/` (gitignored) and never committed; derived numbers are committed with
+attribution; the NC/SA camera data is acceptable for this free mod.
 
 ## Bibliography
 
@@ -404,6 +508,8 @@ Requirements, values to be pinned in Phase 1:
   1966–1968.
 - **[Baker1988]** Baker, D. J., Stair, A. T. (1988). Rocket measurements of the altitude
   distributions of the hydroxyl airglow. *Physica Scripta* 37, 611–622. (Read via [Wust2022].)
+- **[Bodhaine1999]** Bodhaine, B. A., Wood, N. B., Dutton, E. G., Slusser, J. R. (1999). On
+  Rayleigh optical depth calculations. *J. Atmos. Oceanic Technol.* 16, 1854–1861.
 - **[Chandra1972]** Chandra, S., et al. (1972). The equatorial airglow and the ionospheric
   geomagnetic anomaly. NASA TM-X-65978.
   https://ntrs.nasa.gov/api/citations/19720021779/downloads/19720021779.pdf
@@ -423,6 +529,9 @@ Requirements, values to be pinned in Phase 1:
   the paper.
 - **[Gao2012]** Gao, H., Nee, J.-B., Xu, J. (2012). The emission of oxygen green line and density
   of O atom determined by using ISUAL and SABER measurements. *Ann. Geophys.* 30, 695–701.
+- **[Gao2017]** Gao, C., et al. (2017). Improved computation of the adaptation coefficient in
+  the CIE system of mesopic photometry. *Optics Express* 25(15), 18365 (reproduces the
+  CIE 191:2010 equations and constants; S).
 - **[Gill2020]** Gill, A., et al. (2020). Optical night sky brightness measurements from the
   stratosphere. arXiv:2010.05145.
 - **[Huang2016]** Huang, T.-Y. (2016). Simulations of airglow variations induced by the CO₂
@@ -449,6 +558,14 @@ Requirements, values to be pinned in Phase 1:
   America equatorial region observed by airglow imager. *Ann. Geophys.* 25, 399–406.
 - **[Mende1993]** Mende, S. B., et al. (1993). Limb view spectrum of the Earth's airglow. *JGR* 98.
   doi:10.1029/93JA02282 (S, abstract).
+- **[MSIS21]** Emmert, J. T., et al. NRLMSIS 2.1 empirical atmosphere model (US Naval Research
+  Laboratory), used through pymsis 0.13 (Lucas et al., MIT licence).
+- **[NCAR-glbmean]** NCAR HAO global-mean model source `mkemiss.F`
+  (https://download.hao.ucar.edu/pub/lqian/glbmean/src/mkemiss.F). Its comments give the
+  McDade parameterisations "from Ian McDade, Mar 7, 1994 mail communication to Roble". Used
+  only as a source of the published constants; no code is copied.
+- **[NIST-ASD]** Kramida, A., Ralchenko, Yu., Reader, J., NIST ASD Team. NIST Atomic Spectra
+  Database (queried 2026-10-11): O I and Na I transition probabilities and oscillator strengths.
 - **[Noll2012]** Noll, S., et al. (2012). An atmospheric radiation model for Cerro Paranal. I. The
   optical spectral range. *A&A* 543, A92. arXiv:1205.2003.
 - **[Noll2025]** Noll, S., Schmidt, C., Hannawald, P., Kausch, W., Kimeswenger, S. (2025). PALACE
@@ -464,8 +581,14 @@ Requirements, values to be pinned in Phase 1:
 - **[Paulino-CISBGf]** OI 557.7 nm F-region nightglow intensity at 7.4°S, 8th CISBGf expanded
   abstract (arq_607). Conference paper, not peer-reviewed (S).
 - **[Petrignani2005]** Storage-ring O₂⁺ dissociative recombination yields (AMOLF), (S).
+- **[Serdyuchenko2014]** Serdyuchenko, A., Gorshelev, V., Weber, M., Chehade, W., Burrows,
+  J. P. (2014). High spectral resolution ozone absorption cross-sections – Part 2:
+  Temperature dependence. *AMT* 7, 625–636. Data: IUP Bremen (version 2012).
 - **[Sun2016]** Sun, L., et al. (2016). A statistical analysis of equatorial plasma bubble
   structures based on an all-sky airglow imager network in China. *JGR Space Phys.* (S).
+- **[TSIS-HSRS]** Coddington, O. M., et al. (2021). The TSIS-1 Hybrid Solar Reference Spectrum.
+  *GRL* 48, e2020GL091709. Version 2 file `hybrid_reference_spectrum_c2022-11-30_with_unc.nc`
+  (LASP LISIRD).
 - **[Vadas2012]** Vadas, S. L., Yue, J., Nakamura, T. (2012). Mesospheric concentric gravity waves
   generated by multiple convective storms over the North American Great Plain. *JGR* (S).
 - **[Wiens2004]** Wiens, R. H., et al. (2004). Brightness variations of the northern 630 nm

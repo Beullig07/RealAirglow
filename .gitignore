@@ -11,3 +11,8 @@ reference/data/cache/
 bin/
 obj/
 *.user
+
+# Reference model render caches and scratch scripts
+reference/output/*.npz
+reference/output/render_log.txt
+reference/scratch/
