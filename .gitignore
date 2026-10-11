@@ -43,3 +43,6 @@ tests/**/obj/
 # Build outputs placed into GameData by the builds (packaged for releases, not committed)
 GameData/RealAirglow/Plugins/
 GameData/RealAirglow/Shaders/
+
+# Release zips (tools/package_release.sh)
+release/
