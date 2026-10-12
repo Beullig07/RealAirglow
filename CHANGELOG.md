@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.4 (unreleased)
+## 1.0.4 (2026-10-12)
 
 ### Added
 - macOS (Metal or OpenGL) and Linux (OpenGL) support. The release carries one shader bundle

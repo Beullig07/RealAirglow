@@ -4,7 +4,7 @@ The full settings, how to build from source, the repository layout and the credi
 
 ## Install
 
-1. Download `RealAirglow-1.0.3.zip` from the
+1. Download `RealAirglow-1.0.4.zip` from the
    [Releases](../../../releases) page.
 2. Copy its `GameData/RealAirglow` folder into your KSP `GameData` folder.
 
