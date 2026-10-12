@@ -15,6 +15,9 @@ namespace RealAirglow.Editor
     /// linear float output (exposure 1, no sRGB encoding, so pixels are luminance-scaled linear
     /// sRGB in cd m^-2) for reference/compare_shader.py. Batch mode (needs a GPU, so no -nographics):
     /// Unity.exe -batchmode -quit -projectPath unity/RealAirglowShaders -executeMethod RealAirglow.Editor.ComparisonHarness.Run
+    /// Add -force-glcore to render with the OpenGL Core shader (the macOS/Linux SubShader). The
+    /// in-front and behind passes are written too (name_front.f32, name_back.f32), so two runs
+    /// can be compared pixel for pixel with reference/compare_harness_runs.py.
     /// </summary>
     public static class ComparisonHarness
     {
@@ -112,9 +115,15 @@ namespace RealAirglow.Editor
                     maxDiff = Math.Max(maxDiff, Math.Abs(front[k] + back[k] - px[k]));
                 }
                 double splitError = maxPx > 0 ? maxDiff / maxPx : 0;
-                var bytes = new byte[px.Length * 4];
-                Buffer.BlockCopy(px, 0, bytes, 0, bytes.Length);
-                File.WriteAllBytes(Path.Combine(outDir, v.Name + ".f32"), bytes);
+                void Write(string file, float[] data)
+                {
+                    var bytes = new byte[data.Length * 4];
+                    Buffer.BlockCopy(data, 0, bytes, 0, bytes.Length);
+                    File.WriteAllBytes(Path.Combine(outDir, file), bytes);
+                }
+                Write(v.Name + ".f32", px);
+                Write(v.Name + "_front.f32", front);
+                Write(v.Name + "_back.f32", back);
 
                 var sb = new StringBuilder();
                 sb.Append("{\n");
@@ -126,6 +135,7 @@ namespace RealAirglow.Editor
                 sb.AppendFormat(CultureInfo.InvariantCulture, "  \"split_error\": {0:R},\n", splitError);
                 sb.AppendFormat(CultureInfo.InvariantCulture, "  \"outshine\": {0}, \"sun_dir\": [{1:R}, {2:R}, {3:R}],\n",
                     v.Outshine ? "true" : "false", sunDir.x, sunDir.y, sunDir.z);
+                sb.AppendFormat(CultureInfo.InvariantCulture, "  \"graphics_api\": \"{0}\",\n", SystemInfo.graphicsDeviceType);
                 sb.Append("  \"rows\": \"bottom_to_top\", \"channels\": \"RGBA float32\"\n}\n");
                 File.WriteAllText(Path.Combine(outDir, v.Name + ".json"), sb.ToString());
 

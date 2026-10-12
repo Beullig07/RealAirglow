@@ -9,7 +9,7 @@ https://youtu.be/8SMj5pXQ0a4
 
 ## Requirements
 
-- KSP 1.12.x on **Windows (DirectX 11)**. macOS, Linux and OpenGL are not supported.
+- KSP 1.12.x on **Windows** (DirectX 11 or OpenGL), **macOS** (Metal or OpenGL) or **Linux** (OpenGL).
 - A real-Earth planet pack with a body named `Earth` (**RSS** or **Sol**). *Stock Kerbin is not supported.*
 - No other mods are needed. Tested with Sol, Scatterer, EVE volumetric clouds, TUFX and Parallax.
 

@@ -60,7 +60,7 @@ def main():
         # the single pass by a tiny amount where a pixel gets both and has negative channels.
         passed = med <= TOL_MEDIAN and p95 <= TOL_P95 and split <= 1e-3
         ok &= passed
-        print(f"{meta_path.stem:16s} pixels {m.sum():6d}  luminance rel. error median {med:.2%}  p95 {p95:.2%}  "
+        print(f"{meta_path.stem:16s} [{meta.get('graphics_api', '?')}] pixels {m.sum():6d}  luminance rel. error median {med:.2%}  p95 {p95:.2%}  "
               f"max {mx:.2%}  |  colour error (max channel / Y) p95 {np.percentile(rgb_rel, 95):.2%}  "
               f"front+back split error {split:.1e}  "
               f"{'PASS' if passed else 'FAIL'}")

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Package GameData/RealAirglow plus the licence files into release/RealAirglow-<version>.zip.
-# Build the plugin (dotnet build -c Release) and the shader bundle first.
+# Build the plugin (dotnet build -c Release) and the three shader bundles first.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 version="${1:?usage: tools/package_release.sh <version>}"
-for f in GameData/RealAirglow/Plugins/RealAirglow.dll GameData/RealAirglow/Shaders/realairglow-windows.bundle \
+for f in GameData/RealAirglow/Plugins/RealAirglow.dll GameData/RealAirglow/Shaders/realairglow-{windows,macos,linux}.bundle \
          GameData/RealAirglow/Config/Earth.cfg GameData/RealAirglow/Icons/toolbar.png; do
   [ -f "$f" ] || { echo "missing $f" >&2; exit 1; }
 done

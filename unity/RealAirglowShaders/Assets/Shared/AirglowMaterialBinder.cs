@@ -46,6 +46,8 @@ namespace RealAirglow
         private static readonly Vector4[] shape = new Vector4[MaxLayers], colour = new Vector4[MaxLayers],
             binColour = new Vector4[MaxLayers * MaxBins], binExt = new Vector4[MaxLayers * MaxBins];
 
+        private static readonly Vector4[] frustum4 = new Vector4[4];
+
         private const double Luma0 = 0.2126729, Luma1 = 0.7151522, Luma2 = 0.0721750;
 
         /// <summary>Layer arrays, lower atmosphere, mode keywords and exposure.</summary>
@@ -111,7 +113,8 @@ namespace RealAirglow
         {
             m.SetVector("_CamPosKm", new Vector4((float)v.CamPosKm.x, (float)v.CamPosKm.y, (float)v.CamPosKm.z, 0f));
             m.SetVector("_CamForward", v.CamForward);
-            m.SetVectorArray("_FrustumRays", new Vector4[] { v.FrustumRays[0], v.FrustumRays[1], v.FrustumRays[2], v.FrustumRays[3] });
+            for (int i = 0; i < 4; i++) frustum4[i] = v.FrustumRays[i];
+            m.SetVectorArray("_FrustumRays", frustum4);
             m.SetFloat("_WorldUnitKm", v.WorldUnitKm);
             m.SetFloat("_RadiusKm", (float)radiusKm);
             m.SetVector("_SunDir", v.SunDir);
@@ -119,11 +122,14 @@ namespace RealAirglow
         }
 
         /// <summary>World-space frustum corner rays of a camera (BL, TL, TR, BR).</summary>
-        public static Vector3[] FrustumRays(Camera cam)
+        public static Vector3[] FrustumRays(Camera cam) => FrustumRays(cam, new Vector3[4]);
+
+        /// <summary>As above, into a caller-owned array of 4 (no per-frame allocation).</summary>
+        public static Vector3[] FrustumRays(Camera cam, Vector3[] corners)
         {
-            var corners = new Vector3[4];
             cam.CalculateFrustumCorners(new Rect(0, 0, 1, 1), 1f, Camera.MonoOrStereoscopicEye.Mono, corners);
-            for (int i = 0; i < 4; i++) corners[i] = cam.transform.TransformVector(corners[i]);
+            var t = cam.transform;
+            for (int i = 0; i < 4; i++) corners[i] = t.TransformVector(corners[i]);
             return corners;
         }
 

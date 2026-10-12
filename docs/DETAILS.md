@@ -48,9 +48,12 @@ Settings are saved in `GameData/RealAirglow/PluginData/settings.cfg`.
 - **Plugin:** `dotnet build -c Release` in `src/RealAirglow`. Add `-p:Deploy=true` to copy it
   into KSP. The project expects KSP at the default Steam path; override it with `-p:KSPRoot=…`.
 - **Core unit tests:** `dotnet test` in `tests/RealAirglow.Tests`.
-- **Shader bundle:** `bash tools/build_shaders.sh`. This needs Unity 2019.4.18f1. It builds the
-  DX11 bundle, renders test views with the real shader and compares them with the reference
-  model.
+- **Shader bundles:** `bash tools/build_shaders.sh`. This needs Unity 2019.4.18f1 with the
+  "Mac Build Support (Mono)" and "Linux Build Support (Mono)" modules. It builds the Windows,
+  macOS and Linux bundles, renders test views with the real shader and compares them with the
+  reference model. `--glcore` renders the test views with OpenGL Core instead of DirectX 11.
+- **Shader output check:** `python3 tools/shader_equivalence/equiv.py` checks, without Unity or
+  a GPU, that the shader output is unchanged since 1.0.3 (setup in the script's header).
 - **Reference model:** Python 3.12. Setup is in [`reference/README.md`](../reference/README.md).
   Third-party data tables are downloaded at run time into `reference/data/cache/` and are not
   part of this repository.

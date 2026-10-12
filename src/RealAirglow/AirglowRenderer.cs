@@ -36,14 +36,33 @@ namespace RealAirglow
             if (shader == null) shader = LoadShader();
         }
 
+        /// <summary>Shader bundle for the running OS (built by unity/.../BuildBundles.cs): Windows
+        /// has DirectX 11 + OpenGL Core, macOS Metal + OpenGL Core, Linux OpenGL Core.</summary>
+        internal static string BundleFile(RuntimePlatform platform)
+        {
+            switch (platform)
+            {
+                case RuntimePlatform.OSXPlayer: return "realairglow-macos.bundle";
+                case RuntimePlatform.LinuxPlayer: return "realairglow-linux.bundle";
+                default: return "realairglow-windows.bundle";
+            }
+        }
+
         private static Shader LoadShader()
         {
-            string path = Path.Combine(KSPUtil.ApplicationRootPath, "GameData", "RealAirglow", "Shaders", "realairglow-windows.bundle");
+            string path = Path.Combine(KSPUtil.ApplicationRootPath, "GameData", "RealAirglow", "Shaders", BundleFile(Application.platform));
             var bundle = AssetBundle.LoadFromFile(path);
             if (bundle == null) { Debug.LogError("[RealAirglow] cannot load " + path); return null; }
             var s = bundle.LoadAllAssets<Shader>().FirstOrDefault(x => x.name == "RealAirglow/Airglow");
-            if (s == null) Debug.LogError("[RealAirglow] shader RealAirglow/Airglow missing from bundle");
             bundle.Unload(false);
+            if (s == null) { Debug.LogError("[RealAirglow] shader RealAirglow/Airglow missing from " + path); return null; }
+            if (!s.isSupported)
+            {
+                Debug.LogError("[RealAirglow] shader not supported on " + SystemInfo.graphicsDeviceType + " (" +
+                               SystemInfo.graphicsDeviceVersion + "); airglow disabled");
+                return null;
+            }
+            Debug.Log("[RealAirglow] shader loaded from " + Path.GetFileName(path) + " for " + SystemInfo.graphicsDeviceType);
             return s;
         }
 
@@ -152,10 +171,13 @@ namespace RealAirglow
         private CameraEvent mainEvent, frontEvent;
         private bool mainRegistered, frontRegistered;
         private MaterialPropertyBlock allPass, backPass, frontPass;
+        private readonly Vector3[] frustum = new Vector3[4];
+        private Func<string, double> displayScale;   // cached: a method group allocates a delegate per use
 
         internal void Init(RealAirglowAddon owner, Camera cam, Material mat, bool isScaled)
         {
             addon = owner; Camera = cam; scaled = isScaled;
+            displayScale = owner.Controls.Effective;
             if (material != null) Destroy(material);
             material = mat;
             if (quad == null) quad = AirglowMaterialBinder.FullScreenQuad();
@@ -189,7 +211,7 @@ namespace RealAirglow
 
             Camera.depthTextureMode |= DepthTextureMode.Depth;
             AirglowRenderer.ViewOrigin(addon.Body, Camera, scaled, out var posKm, out var unitKm);
-            var frustum = AirglowMaterialBinder.FrustumRays(Camera);
+            AirglowMaterialBinder.FrustumRays(Camera, frustum);
             var sunDir = AirglowRenderer.SunDirection(addon.Body);
             double radiusKm = addon.Body.Radius / 1000.0;
 
@@ -199,7 +221,7 @@ namespace RealAirglow
                 : CameraExposure.IssD4.Scale;
             addon.CurrentExposure = exposure;
 
-            AirglowMaterialBinder.BindModel(material, addon.Model, addon.Controls.Effective, o.F107, o.Mode,
+            AirglowMaterialBinder.BindModel(material, addon.Model, displayScale, o.F107, o.Mode,
                 o.Extinction, o.Outshine, exposure, QualitySettings.activeColorSpace == ColorSpace.Gamma);
             var view = new AirglowView
             {

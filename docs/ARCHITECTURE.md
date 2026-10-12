@@ -12,9 +12,30 @@ file covers engineering decisions and the evidence behind them.
 | `tests/RealAirglow.Tests/` | xunit tests: intensity controls (linear, 0 % = exactly zero, only the airglow scale) and the CPU integrator against reference-model numbers. |
 | `unity/RealAirglowShaders/` | Unity 2019.4.18f1 project: `Airglow.shader`, the bundle build script, the comparison harness, and `Shared/AirglowMaterialBinder.cs` (also compiled into the plugin so both drive the shader identically). |
 | `src/RealAirglow/` | The KSP plugin (net472): addon, renderer, camera hooks, settings and debug windows. |
-| `tools/build_shaders.sh` | Builds the DX11 bundle and runs the shader-vs-reference comparison. |
+| `tools/build_shaders.sh` | Builds the three shader bundles and runs the shader-vs-reference comparison. |
+| `tools/shader_equivalence/` | Checks, without Unity or a GPU, that a shader change leaves the output unchanged. |
 
-Windows/DX11 only (owner decision 2026-10-11): one bundle, `realairglow-windows.bundle`.
+## Platforms (1.0.4)
+
+1.0.0–1.0.3 were Windows/DirectX 11 only. 1.0.4 adds macOS and Linux (owner request
+2026-10-12). `BuildBundles.cs` writes one bundle per OS, and the plugin loads the one for
+`Application.platform`:
+
+| Bundle | Graphics APIs |
+|---|---|
+| `realairglow-windows.bundle` | DirectX 11, OpenGL Core (`-force-glcore`) |
+| `realairglow-macos.bundle` | Metal, OpenGL Core |
+| `realairglow-linux.bundle` | OpenGL Core |
+
+- `Airglow.shader` has two SubShaders around the same program (`AirglowPass.cginc`).
+  DirectX 11 keeps shader model 5.0, exactly as before. Every other API compiles at 3.5, the
+  highest level macOS OpenGL 4.1 accepts. Unity's 5.0 is not available on Metal or macOS
+  OpenGL, and nothing in the program needs more than 3.5.
+- If the shader is still not supported on a machine, the plugin logs the graphics API and
+  disables the airglow instead of drawing garbage.
+- The camera logic already handles OpenGL's split near/far local cameras ("Camera 00" and
+  "Camera 01", see below), and Unity's depth and render-texture macros handle the
+  differences in depth range and image orientation.
 
 ## Data flow
 
@@ -110,10 +131,29 @@ Results on 2026-10-11 (all pass):
 The remaining error comes from 16-point quadrature (≤ 2 % on rays crossing a layer below its
 peak) and from the 11-bin extinction (`PHYSICS.md` §11).
 
-## Performance (Phase 2, unoptimised)
+## Performance
 
 Per pixel: up to 9 layers × 2 path intervals × 16 Gauss–Legendre nodes, plus 2 × 16 nodes for
-the absorber columns. Phase 4 moves the horizontally uniform part into (r, μ) lookup tables and
+the absorber columns.
+
+1.0.4 removes work whose result was thrown away, so the output is unchanged:
+- In flight the local camera draws two passes (in front of and behind the lower atmosphere).
+  Each pass used to integrate every interval and then zero the ones belonging to the other
+  pass. Now each pass integrates only its own intervals.
+- The in-front pass skips the absorber columns, which only dim emission behind the lower
+  atmosphere.
+- The behind pass returns at once on rays that never cross the lower atmosphere (most of the
+  sky seen from orbit).
+- The plugin no longer allocates per frame (frustum rays, uniform arrays, the display-scale
+  delegate).
+
+`tools/shader_equivalence/equiv.py` renders the 1.0.3 shader and the current one on Mesa's
+llvmpipe for every keyword combination, eight views and all three pass modes: 288/288 renders
+are bit-identical. On llvmpipe the flight view (two passes) takes 1.6–2.3× less time and the
+single-pass map view is unchanged. llvmpipe is a CPU rasteriser, so this is a rough proxy for
+GPU work, not a GPU benchmark.
+
+Phase 4 moves the horizontally uniform part into (r, μ) lookup tables and
 adds quality presets.
 
 ## Known gaps after Phase 2

@@ -1,5 +1,21 @@
 # In-game test checklist
 
+## Retest for 1.0.4 (macOS/Linux, faster rendering)
+
+1. **Windows, same look:** compare with 1.0.3 at the same places (limb from orbit, ground at
+   night, terminator in map view). Nothing should look different.
+   - `KSP.log` contains `[RealAirglow] shader loaded from realairglow-windows.bundle for
+     Direct3D11`.
+2. **Faster:** in flight, at night from orbit and from the ground, FPS with the airglow on
+   should be higher than with 1.0.3 (compare the cost: FPS with the airglow on vs off).
+3. **OpenGL on Windows** (the shader macOS and Linux use): start KSP with `-force-glcore`.
+   - The log says `… for OpenGLCore`.
+   - The airglow looks the same as on DirectX 11, from orbit and from the ground.
+   - Clouds from orbit and from the ground behave as with DirectX 11.
+4. **macOS and Linux** (needs someone with a Mac or Linux install): the log says
+   `… realairglow-macos.bundle for Metal` or `… realairglow-linux.bundle for OpenGLCore`, and
+   the airglow shows. An error line `shader not supported on …` means send the log.
+
 ## Retest for 1.0.3 (outshined by sunlight)
 
 1. **Terminator:** in map view or orbit with the terminator in view:
@@ -42,7 +58,8 @@
 
 Before you start:
 - KSP closed, then the build deployed (`GameData/RealAirglow` with `Plugins/RealAirglow.dll`,
-  `Shaders/realairglow-windows.bundle`, `Config/Earth.cfg`, `Icons/toolbar.png`).
+  `Shaders/realairglow-windows.bundle` (1.0.4: also `-macos` and `-linux`), `Config/Earth.cfg`,
+  `Icons/toolbar.png`).
 - After loading, `KSP.log` / `Player.log` should contain
   `[RealAirglow] 9 layers for Earth, R = … km, colour space …`. Note the colour space it
   reports (Gamma or Linear).
