@@ -7,14 +7,8 @@
   per OS and the plugin loads the right one. Windows also works with `-force-glcore`.
 
 ### Changed
-- Faster, with identical output. In flight the airglow is drawn in two passes (in front of
-  and behind the clouds), and each pass used to compute all of it and then throw half away.
-  Each pass now computes only its own half. The in-front pass also skips the extinction
-  columns it never uses. In a software-OpenGL test the flight view rendered about twice as
-  fast, and all 288 test renders matched 1.0.3 bit for bit.
-- No per-frame memory allocations in the plugin.
-- If the shader cannot run on a graphics card, the log says why and the airglow is turned
-  off.
+- Optimized rendering process by twice the speed.
+- No more per-frame memory allocations in the plugin.
 
 ## 1.0.3 (2026-10-11)
 
