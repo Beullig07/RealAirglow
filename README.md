@@ -1,34 +1,33 @@
 # RealAirglow
 
-A Kerbal Space Program 1.12 visual mod that renders Earth's nightglow (airglow) from cited
-physics. It draws the thin green 557.7 nm layer near 97 km, the red 630 nm layer near 250 km,
-and the OH, Na, O₂ and continuum emission. The layers look right from orbit (bright limb bands)
-and from the ground (van Rhijn brightening toward the horizon, dimmed by extinction).
+> **AI-assisted plugin.** RealAirglow was written with an AI coding assistant (Claude Code by
+> Anthropic) under my direction. It renders Earth's nightglow (airglow) in Kerbal Space
+> Program from real physics, with every value traced to a cited source in
+> [`docs/PHYSICS.md`](docs/PHYSICS.md).
 
-> **AI-assisted plugin.** This mod was written with an AI coding assistant (Claude Code by
-> Anthropic) under the author's direction. That covers the physics research, the reference
-> model, the shader, the plugin and the docs. Every physical number traces to a cited source in
-> [`docs/PHYSICS.md`](docs/PHYSICS.md). The shader is checked automatically against an
-> independent Python reference model. The author tested it in their own KSP install.
-
-**Status: 1.0.3.** The static layers and the intensity window work. Variability (gravity waves, solar cycle, tides) and further integration with
-Scatterer, EVE and TUFX are not done yet. See [`CHANGELOG.md`](CHANGELOG.md).
+It draws the green 557.7 nm layer near 97 km, the red 630 nm layer near 250 km, and the fainter
+OH, Na, O₂ and continuum emission, both from orbit and from the ground. Changes are in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ## Requirements
 
-- KSP 1.12.x on **Windows with DirectX 11**. macOS, Linux and OpenGL are not supported.
-- A real-Earth planet pack with a body named `Earth` (Real Solar System or Sol). Stock Kerbin
-  gets no airglow.
-- No other mods are needed.
-- Tested with Sol, Scatterer 0.0908 and EVE 3.2.2 (volumetric clouds), TUFX and Parallax.
+- KSP 1.12.x on **Windows (DirectX 11)**. macOS, Linux and OpenGL are not supported.
+- A real-Earth planet pack with a body named `Earth` (**RSS** or **Sol**). *Stock Kerbin is not
+  supported.*
+- No other mods are needed. Tested with Sol, Scatterer, EVE volumetric clouds, TUFX and Parallax.
 
 ## Install
 
-1. Download `RealAirglow-1.0.3.zip` from the
-   [Releases](../../releases) page.
-2. Copy its `GameData/RealAirglow` folder into your KSP `GameData` folder.
+Download the zip from [Releases](../../releases) and copy its `GameData/RealAirglow` folder into
+your KSP `GameData` folder.
 
 ## Use
+
+Open the window with the toolbar button or **Alt+G**. The defaults (master 1.5 %, red line
+500 %, airglow hidden where the Sun is up) are a good starting point.
+
+<details>
+<summary>All settings</summary>
 
 - Click the toolbar button (green arc) or press **Alt+G** to open the window. The button is in
   flight, map view and the Tracking Station.
@@ -63,7 +62,10 @@ Settings are saved in `GameData/RealAirglow/PluginData/settings.cfg`.
 - Debug… also has an auto (metered) exposure that dims the whole frame, the way a real camera
   would.
 
-## Building from source
+</details>
+
+<details>
+<summary>Building from source</summary>
 
 - **Plugin:** `dotnet build -c Release` in `src/RealAirglow`. Add `-p:Deploy=true` to copy it
   into KSP. The project expects KSP at the default Steam path; override it with `-p:KSPRoot=…`.
@@ -75,7 +77,7 @@ Settings are saved in `GameData/RealAirglow/PluginData/settings.cfg`.
   Third-party data tables are downloaded at run time into `reference/data/cache/` and are not
   part of this repository.
 
-## Layout
+### Layout
 
 | Path | What |
 |---|---|
@@ -88,6 +90,8 @@ Settings are saved in `GameData/RealAirglow/PluginData/settings.cfg`.
 | `unity/RealAirglowShaders/` | Unity project with the shader, bundle build and comparison harness |
 | `GameData/RealAirglow/` | Config and icon; release builds add `Plugins/` and `Shaders/` |
 
+</details>
+
 ## Licence
 
 - **Code** (C#, HLSL, Python, scripts): MIT, see [`LICENSE`](LICENSE).
@@ -95,7 +99,8 @@ Settings are saved in `GameData/RealAirglow/PluginData/settings.cfg`.
   `docs/`): CC BY-NC-SA 4.0, because some values are derived from non-commercial share-alike
   camera data. See [`LICENSE-DATA.md`](LICENSE-DATA.md) for the sources and their licences.
 
-## Credits
+<details>
+<summary>Credits</summary>
 
 - PALACE airglow model data: Noll et al. (2025), CC BY 4.0.
 - CIE 1931 colour-matching functions and V′(λ): CIE, CC BY-SA 4.0.
@@ -106,3 +111,5 @@ Settings are saved in `GameData/RealAirglow/PluginData/settings.cfg`.
   Center. It is used in `reference/output/compare_iss047.png`.
 
 Full references are in the bibliography of [`docs/PHYSICS.md`](docs/PHYSICS.md).
+
+</details>
